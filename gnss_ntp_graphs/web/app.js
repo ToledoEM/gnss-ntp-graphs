@@ -20,7 +20,7 @@
            sections: ["ntp", "peers", "gps", "stats"], hide_graphs: [], ranges: ["2h", "8h", "24h", "7d", "30d", "1y"],
            default_range: "24h", graph_height: 220, columns: "auto", font_size: 14, timezone: "local",
            offset_unit: "ms", offset_lines: [], offset_warn_ms: 1, offset_bad_ms: 10,
-           stale_warn_s: 120, stale_bad_s: 300, palette: "Paired", colourblind_safe: false,
+           stale_warn_s: 120, stale_bad_s: 300, palette: "Paired", colourblind_safe: false, cursor: "hover",
            repo_url: "https://github.com/ToledoEM/gnss-ntp-graphs",
            docs_url: "https://toledoem.github.io/gnss-ntp-graphs/" },
     graphs: {},
@@ -107,6 +107,29 @@
     };
   }
 
+  /* Index of the newest x with a value in any series, or -1. */
+  function lastIndex(data) {
+    for (let i = data[0].length - 1; i >= 0; i--) {
+      if (data.slice(1).some((ys) => ys && ys[i] !== null && ys[i] !== undefined)) return i;
+    }
+    return -1;
+  }
+
+  /* Dashed vertical line at x value t. */
+  function lastLine(t) {
+    return (u) => {
+      const x = u.valToPos(t, "x", true);
+      if (x < u.bbox.left || x > u.bbox.left + u.bbox.width) return;
+      const ctx = u.ctx;
+      ctx.save();
+      ctx.strokeStyle = css("--muted");
+      ctx.setLineDash([4, 4]);
+      ctx.lineWidth = 1 * devicePixelRatio;
+      ctx.beginPath(); ctx.moveTo(x, u.bbox.top); ctx.lineTo(x, u.bbox.top + u.bbox.height); ctx.stroke();
+      ctx.restore();
+    };
+  }
+
   /* Replace the plot for graph id. series: [{label, colour?, dash?, scale?}], data: [x, ...ys] */
   function plot(id, series, data, opts = {}) {
     const node = $("p-" + id);
@@ -124,7 +147,18 @@
     }
     const ax = [{ ...a, ...(opts.xAxis || {}) }, { ...a, size: 64, ...(opts.yAxis || {}) }];
     if (series.some((s) => s.scale === "y2")) ax.push({ ...a, side: 1, scale: "y2", size: 60, grid: { show: false } });
-    const hooks = opts.lines && opts.lines.length ? { draw: [refLines(opts.lines)] } : {};
+    const hooks = { draw: [], ready: [], setCursor: [] };
+    if (opts.lines && opts.lines.length) hooks.draw.push(refLines(opts.lines));
+    if (CFG.web.cursor === "last" && opts.time !== false) {
+      const last = lastIndex(data);
+      if (last >= 0) {
+        // Legend shows the newest values whenever the pointer is not over the plot
+        const atLast = (u) => { if (u.cursor.idx === null || u.cursor.idx === undefined) u.setLegend({ idx: last }); };
+        hooks.ready.push(atLast);
+        hooks.setCursor.push(atLast);
+        hooks.draw.push(lastLine(data[0][last]));
+      }
+    }
     const pal = colours(series.length);
     const u = new uPlot({
       width: widthOf(node), height: opts.height || CFG.web.graph_height,
@@ -170,6 +204,11 @@
     if (!w.ranges.includes(state.range)) state.range = w.default_range;
     $("ranges").innerHTML = w.ranges.map((n) => `<button data-range="${n}">${n}</button>`).join("");
     markOn("#ranges button", "range", state.range);
+  }
+
+  /* Single layout: sections scroll to just below the sticky header. */
+  function setTopHeight() {
+    document.documentElement.style.setProperty("--top-h", ($("top").offsetHeight + 8) + "px");
   }
 
   function markOn(sel, key, val) {
@@ -262,6 +301,7 @@
       ctx.fillText(l, cx + (R + 12) * Math.cos(a), cy + (R + 12) * Math.sin(a));
     });
     const sats = (gps && gps.satellites) || [];
+    skyLegend(gps, sats);
     if (!sats.length) { ctx.fillText("no satellite data", cx, cy); return; }
     sats.forEach((s) => {
       if (s.el === null || s.az === null || s.el === undefined || s.el < 0) return;
@@ -276,6 +316,28 @@
       ctx.fillStyle = css("--text"); ctx.fillText(String(s.PRN ?? ""), x, y - rad - 7);
     });
     ctx.lineWidth = 1;
+  }
+
+  /* Colour key and used/visible counts under the sky plot. */
+  function skyLegend(gps, sats) {
+    const node = $("sky-legend");
+    if (!sats.length) { node.innerHTML = ""; return; }
+    const cc = constellationColours(), counts = {};
+    sats.forEach((s) => {
+      const name = GNSS_IDS[s.gnssid];
+      if (!name) return;
+      const c = counts[name] || (counts[name] = { used: 0, vis: 0 });
+      c.vis += 1;
+      if (s.used) c.used += 1;
+    });
+    const items = CONSTELLATIONS.filter((n) => counts[n]).map((n) => {
+      const col = cc[n] ? cc[n].colour : css("--muted");
+      return `<span><i class="fill" style="color:${col}"></i>${n} <b>${counts[n].used}/${counts[n].vis}</b></span>`;
+    });
+    items.push('<span><i class="fill"></i>used</span>', "<span><i></i>visible only</span>");
+    const used = gps && gps.used, total = gps && gps.total;
+    items.push(`<span class="sum">used <b>${used ?? "–"}</b> of <b>${total ?? "–"}</b> satellites</span>`);
+    node.innerHTML = items.join("");
   }
 
   function renderPeerTable(peers) {
@@ -357,6 +419,7 @@
       const cur = await getJSON("current.json");
       state.current = cur;
       renderStatus(cur);
+      setTopHeight();
       const needRange = ["ntp", "peers", "gps"].some(visible);
       if (needRange) {
         const r = await getJSON("range_" + state.range + ".json");
@@ -397,6 +460,7 @@
   window.addEventListener("resize", () => {
     clearTimeout(resizeTimer);
     resizeTimer = setTimeout(() => {
+      setTopHeight();
       Object.entries(state.plots).forEach(([id, u]) => {
         const node = $("p-" + id);
         if (node && !node.closest("[hidden]") && node.offsetParent) u.setSize({ width: widthOf(node), height: u.height });

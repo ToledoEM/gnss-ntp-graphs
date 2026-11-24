@@ -1,0 +1,29 @@
+# gnss-ntp-graphs configuration for Docker Compose (see compose.yaml).
+# Only the keys you change are needed; anything left out keeps its default.
+# Full list of keys: deploy/config.toml or the Configuration docs.
+#
+# The image sets source.type, source.bridge_url, paths.db, paths.www,
+# server.serve and server.port through GNG_* environment variables, and the
+# environment wins over this file. To change one of those, set it under
+# "environment:" in compose.yaml instead (e.g. GNG_SOURCE_BRIDGE_URL).
+
+[web]
+title = "GNSS NTP"
+header = ""
+# "tabs" or "single"
+layout = "tabs"
+# "hover" or "last"
+cursor = "hover"
+default_range = "24h"
+timezone = "local"
+offset_unit = "ms"
+
+[intervals]
+ntp = 60
+gps = 15
+export = 60
+
+[retention]
+raw_days = 7.0
+days_5m = 90.0
+days_1h = 1095.0

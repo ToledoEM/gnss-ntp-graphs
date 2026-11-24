@@ -62,6 +62,48 @@ web_src = ""
 | `www` | Web root. The collector copies the page here at start and writes `data/` below it |
 | `web_src` | Folder to copy the page from instead of the bundled one. Leave empty unless you maintain a modified page |
 
+### Where data is saved
+
+All history is in one SQLite file, `samples.db`, at the `db` path:
+
+| Install | Database |
+|---|---|
+| Raspberry Pi or Debian (`install.sh`) | `/var/lib/gnss-ntp-graphs/samples.db` |
+| Docker | `/data/samples.db` in the `gnss-ntp-graphs` volume. `docker volume inspect gnss-ntp-graphs` shows its folder on the host |
+| Development run | Whatever `GNG_PATHS_DB` points to |
+
+The database runs in WAL mode, so `samples.db-wal` and `samples.db-shm` sit next to it while the collector runs. The `www/` folder holds only the page and JSON files the collector rewrites, so it needs no backup.
+
+### Backing up
+
+A plain file copy of a running database can catch it halfway through a write. Use SQLite's backup instead, which is safe while the collector runs:
+
+```bash
+sqlite3 /var/lib/gnss-ntp-graphs/samples.db ".backup '/home/pi/samples-$(date +%F).db'"
+```
+
+Without the `sqlite3` tool, Python does the same:
+
+```bash
+python3 -c "import sqlite3; sqlite3.connect('/var/lib/gnss-ntp-graphs/samples.db').backup(sqlite3.connect('/home/pi/samples-backup.db'))"
+```
+
+With Docker, run the backup inside the container and copy the result out:
+
+```bash
+docker exec gnss-ntp-graphs python -c "import sqlite3; sqlite3.connect('/data/samples.db').backup(sqlite3.connect('/data/samples-backup.db'))"
+docker cp gnss-ntp-graphs:/data/samples-backup.db .
+```
+
+The backup is a single self-contained file, with no `-wal` or `-shm` files to copy.
+
+### Restoring
+
+1. Stop the collector: `sudo systemctl stop gnss-ntp-graphs`, or `docker compose stop`.
+2. Replace `samples.db` with the backup and delete any `samples.db-wal` and `samples.db-shm` next to it.
+3. Make sure the collector's user owns the file: `sudo chown gnssgraphs: /var/lib/gnss-ntp-graphs/samples.db`. In Docker the user is UID 10001.
+4. Start the collector again.
+
 ## retention
 
 ```toml

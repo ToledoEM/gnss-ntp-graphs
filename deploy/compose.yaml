@@ -1,0 +1,31 @@
+# Docker Compose for gnss-ntp-graphs with a custom TOML config.
+# Copy this file and config.docker.toml into one folder, edit the TOML, then:
+#   docker compose up -d
+# After editing the TOML: docker compose restart
+# Set "context" to the folder holding this repository's Dockerfile.
+
+services:
+  gnss-ntp-graphs:
+    build:
+      context: ..
+      # Local source only: include chronyc in the image
+      # args:
+      #   WITH_CHRONYC: "1"
+    image: gnss-ntp-graphs
+    container_name: gnss-ntp-graphs
+    command: ["python", "-m", "gnss_ntp_graphs", "-c", "/config.toml", "run"]
+    ports: ["8080:8080"]
+    # The image sets these through GNG_* variables, which win over the TOML
+    environment:
+      GNG_SOURCE_TYPE: bridge  # bridge | local
+      GNG_SOURCE_BRIDGE_URL: http://192.168.1.50/
+    # Local source only: read chronyd and gpsd on the Docker host.
+    # Remove "ports" above when using host networking.
+    # network_mode: host
+    volumes:
+      - gnss-ntp-graphs:/data
+      - ./config.docker.toml:/config.toml:ro
+    restart: unless-stopped
+
+volumes:
+  gnss-ntp-graphs:

@@ -8,6 +8,7 @@
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
+<div class="top" id="top">
 <header>
   <div class="titles">
     <h1 id="title">GNSS NTP</h1>
@@ -31,6 +32,7 @@
   <div class="tabs" id="tabs"></div>
   <div class="ranges" id="ranges"></div>
 </nav>
+</div>
 
 <main>
   <section id="sec-ntp" class="section" data-section="ntp">
@@ -62,7 +64,7 @@
       <figure data-graph="const"><figcaption>Used by constellation</figcaption><div class="plot" id="p-const"></div></figure>
       <figure data-graph="ss"><figcaption>Average signal, used satellites (dB-Hz)</figcaption><div class="plot" id="p-ss"></div></figure>
       <figure data-graph="dop"><figcaption>Dilution of precision</figcaption><div class="plot" id="p-dop"></div></figure>
-      <figure data-graph="sky"><figcaption>Sky now (filled = used)</figcaption><canvas id="sky" width="420" height="420"></canvas></figure>
+      <figure data-graph="sky"><figcaption>Sky now (filled = used)</figcaption><canvas id="sky" width="420" height="420"></canvas><div id="sky-legend" class="sky-legend"></div></figure>
     </div>
   </section>
 

@@ -94,6 +94,7 @@ DEFAULTS: dict[str, Any] = {
         "palette": "Paired",  # ColorBrewer qualitative scheme
         "colourblind_safe": False,
         "layout": "tabs",  # tabs | single
+        "cursor": "hover",  # hover | last
         "sections": list(SECTIONS),
         "hide_graphs": [],
         "ranges": list(RANGE_NAMES),
@@ -119,6 +120,7 @@ CHOICES = {
     ("source", "ntp"): {"auto", "chrony", "ntpd"},
     ("web", "theme"): {"auto", "light", "dark"},
     ("web", "layout"): {"tabs", "single"},
+    ("web", "cursor"): {"hover", "last"},
     ("web", "offset_unit"): {"ms", "us"},
 }
 

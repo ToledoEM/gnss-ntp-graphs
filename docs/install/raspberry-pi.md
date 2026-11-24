@@ -32,7 +32,7 @@ The script installs python3 if it is missing and touches nothing else. It does n
 | `/opt/gnss-ntp-graphs/gnss_ntp_graphs/` | The Python package |
 | `/etc/gnss-ntp-graphs/config.toml` | Configuration, see [Configuration](../configuration/index.md) |
 | `/etc/systemd/system/gnss-ntp-graphs.service` | systemd unit |
-| `/var/lib/gnss-ntp-graphs/samples.db` | SQLite history |
+| `/var/lib/gnss-ntp-graphs/samples.db` | SQLite history, see [backing up](../configuration/collector.md#backing-up) |
 | `/var/lib/gnss-ntp-graphs/www/` | Static page and `data/*.json` |
 | `/etc/lighttpd/conf-available/89-gnss-ntp-graphs.conf` | lighttpd alias, only with `--web lighttpd` |
 
