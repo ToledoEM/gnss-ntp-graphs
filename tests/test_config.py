@@ -41,6 +41,7 @@ def test_graph_limits(tmp_path):
     [
         ('[web]\ntheme = "blue"\n', "theme"),
         ('[web]\nlayout = "grid"\n', "layout"),
+        ('[web]\ncursor = "always"\n', "cursor"),
         ("[web]\ncolumns = 5\n", "columns"),
         ('[web]\nsections = ["ntp", "weather"]\n', "sections"),
         ('[web]\nranges = ["2h"]\ndefault_range = "24h"\n', "default_range"),
@@ -95,6 +96,7 @@ def test_export_config_json_and_range_filter(tmp_path):
     out = json.loads((tmp_path / "www" / "data" / "config.json").read_text())
     assert out["web"]["ranges"] == ["2h", "24h"]  # canonical order
     assert out["graphs"] == {"dop": {"y_max": 3}}
+    assert out["web"]["cursor"] == "hover"
     ex.ranges(now=1_800_000_000, force=True)
     names = sorted(p.name for p in (tmp_path / "www" / "data").glob("range_*.json"))
     assert names == ["range_24h.json", "range_2h.json"]

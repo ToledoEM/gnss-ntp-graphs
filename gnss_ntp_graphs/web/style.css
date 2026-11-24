@@ -74,16 +74,20 @@ button.on { background: var(--accent); border-color: var(--accent); color: #fff;
 .theme { color: var(--muted); }
 nav {
   display: flex; flex-wrap: wrap; justify-content: space-between; gap: 8px;
-  position: sticky; top: env(safe-area-inset-top, 0px); z-index: 2;
   background: var(--bg); padding: 8px 0; border-bottom: 1px solid var(--line);
 }
+/* tabs: only the buttons stick; single: the whole header sticks.
+   display: contents lets nav stick against the page, not its wrapper. */
+body.layout-tabs .top { display: contents; }
+body.layout-tabs nav,
+body.layout-single .top { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 2; background: var(--bg); }
 .tabs, .ranges, .windows { display: flex; flex-wrap: wrap; gap: 6px; }
 
 /* tabs layout: one section at a time; single layout: all stacked */
 body.layout-tabs .section { display: none; }
 body.layout-tabs .section.on { display: block; }
 body.layout-tabs .section h2 { display: none; }
-body.layout-single .section { scroll-margin-top: 64px; }
+body.layout-single .section { scroll-margin-top: var(--top-h, 64px); }
 h2 { font-size: 1.15em; font-weight: 600; margin: 22px 0 0; }
 
 .grid {
@@ -104,6 +108,15 @@ figcaption { font-weight: 600; margin-bottom: 4px; }
 .plot { width: 100%; min-height: 120px; }
 .empty { color: var(--muted); padding: 60px 0; text-align: center; }
 canvas#sky { width: 100%; max-width: 420px; aspect-ratio: 1; display: block; margin: 0 auto; }
+.sky-legend {
+  display: flex; flex-wrap: wrap; justify-content: center; gap: 4px 14px;
+  color: var(--muted); font-size: 0.85em; padding: 6px 0 4px;
+}
+.sky-legend span { display: inline-flex; align-items: center; gap: 5px; }
+.sky-legend b { color: var(--text); font-weight: 600; font-variant-numeric: tabular-nums; }
+.sky-legend i { width: 10px; height: 10px; border-radius: 50%; border: 2px solid currentColor; display: inline-block; }
+.sky-legend i.fill { background: currentColor; }
+.sky-legend .sum { flex-basis: 100%; justify-content: center; }
 .table-wrap { overflow-x: auto; margin-top: 12px; }
 table {
   border-collapse: collapse; width: 100%; background: var(--panel);

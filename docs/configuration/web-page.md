@@ -15,12 +15,13 @@ The `[web]` section decides what the page shows and how it looks. Where graphs10
 
 | Key | Default | graphs1090 | Meaning |
 |---|---|---|---|
-| `layout` | `"tabs"` | | `tabs` shows one section at a time. `single` stacks all sections on one page, and the buttons scroll to them |
+| `layout` | `"tabs"` | | `tabs` shows one section at a time. `single` stacks all sections on one page, keeps the whole header on top while scrolling, and the buttons scroll to the sections |
 | `sections` | `["ntp", "peers", "gps", "stats"]` | `HIDE_SYSTEM` | Which sections appear, in this order |
 | `hide_graphs` | `[]` | | Graph ids to leave out (list below) |
 | `graph_height` | `220` | `graph_size` | Plot height in pixels. The stratum graph is 75% of this |
 | `columns` | `"auto"` | `all_large` | Graphs per row: `"auto"` fits the width, or `1`, `2`, `3`. Phones always get one |
 | `font_size` | `14` | `font_size` | Base font size in pixels. Axis labels use 80% of it |
+| `cursor` | `"hover"` | | `hover` shows values under a graph only while the pointer is over it. `last` marks the newest point with a dashed line and shows its values under each graph. Hovering still works, and the values go back to the newest point when the pointer leaves |
 
 ![Single layout with a header line](../assets/screenshots/variant-single.png)
 

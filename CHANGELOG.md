@@ -1,5 +1,13 @@
 # Changelog
 
+## Unreleased
+
+- Sky plot legend: colour key per constellation in view with used/visible counts, a filled/ring key, and a "used N of M satellites" line.
+- New `[web] cursor` option. `hover` (default) keeps the current behaviour; `last` marks the newest point with a dashed line and shows its values under each graph until the pointer moves over the plot.
+- Single-page layout keeps the whole header, status line included, on top while scrolling, and the section buttons land below it.
+- Docker Compose file `deploy/compose.yaml` and config template `deploy/config.docker.toml`, mounted read-only as `/config.toml`. The Docker docs show both and how to keep custom copies outside the repository.
+- Docs on where `samples.db` is saved for each install type, how to back it up while the collector runs, and how to restore it.
+
 ## 0.1.0 - 2026-11-24
 
 First version. Needs Python 3.11 or newer and no pip packages. Licensed under Apache 2.0.

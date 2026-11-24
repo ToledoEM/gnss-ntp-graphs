@@ -70,6 +70,9 @@ palette = "Paired"
 colourblind_safe = false
 # "tabs": one section at a time; "single": all sections on one page
 layout = "tabs"
+# Graph crossline: "hover" follows the pointer only; "last" rests on the
+# newest point and fills the values under each graph
+cursor = "hover"
 # Sections shown, in this order: "ntp", "peers", "gps", "stats"
 sections = ["ntp", "peers", "gps", "stats"]
 # Graphs to hide. Ids: offset jitter freq root stratum peer-offset
