@@ -10,13 +10,14 @@ same whichever source feeds them.
 
 from __future__ import annotations
 
+import contextlib
 import json
 import logging
 import shutil
 import socket
 import subprocess
 import time
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from .base import GpsSample, PeerSample, SystemSample, gps_from_sky, peers_from_pn, system_from_crv
 
@@ -29,34 +30,33 @@ def _ms(seconds: float) -> float:
     return round(seconds * 1e9) / 1e6
 
 
-def _run(cmd: List[str], timeout: float) -> Optional[str]:
+def _run(cmd: list[str], timeout: float) -> str | None:
     try:
-        out = subprocess.run(cmd, capture_output=True, text=True, timeout=timeout, check=True)
+        # Fixed argv lists of monitoring commands, no shell
+        out = subprocess.run(cmd, capture_output=True, text=True, timeout=timeout, check=True)  # noqa: S603
         return out.stdout
     except (OSError, subprocess.SubprocessError) as e:
         log.warning("%s: %s", " ".join(cmd), e)
         return None
 
 
-def _rows(text: Optional[str]) -> List[List[str]]:
+def _rows(text: str | None) -> list[list[str]]:
     return [line.split(",") for line in (text or "").splitlines() if line.strip()]
 
 
 # --- chrony -----------------------------------------------------------------
 
 
-def chrony_stddevs(sourcestats: Optional[str]) -> Dict[str, float]:
+def chrony_stddevs(sourcestats: str | None) -> dict[str, float]:
     out = {}
     for r in _rows(sourcestats):
         if len(r) >= 8:
-            try:
+            with contextlib.suppress(ValueError):
                 out[r[0]] = float(r[7])
-            except ValueError:
-                pass
     return out
 
 
-def chrony_crv(tracking: str, sourcestats: Optional[str]) -> Dict[str, Any]:
+def chrony_crv(tracking: str, sourcestats: str | None) -> dict[str, Any]:
     """chronyc -c tracking -> ntpq_crv.json shape."""
     rows = _rows(tracking)
     if not rows or len(rows[0]) < 14:
@@ -82,16 +82,14 @@ def _refid(val: str) -> str:
     hexid = val.split()[0].upper() if val else ""
     name = val[val.find("(") + 1 : val.rfind(")")] if "(" in val else ""
     if not name and len(hexid) == 8 and hexid != "00000000":
-        try:
+        with contextlib.suppress(ValueError):
             name = ".".join(str(int(hexid[i : i + 2], 16)) for i in range(0, 8, 2))
-        except ValueError:
-            pass
     return name
 
 
-def chrony_ntpdata(text: Optional[str]) -> Dict[str, Dict[str, Any]]:
+def chrony_ntpdata(text: str | None) -> dict[str, dict[str, Any]]:
     """chronyc -n ntpdata -> {address: {"refid": str, "delay": seconds}}."""
-    out: Dict[str, Dict[str, Any]] = {}
+    out: dict[str, dict[str, Any]] = {}
     addr = None
     for line in (text or "").splitlines():
         key, _, val = line.partition(":")
@@ -103,14 +101,12 @@ def chrony_ntpdata(text: Optional[str]) -> Dict[str, Dict[str, Any]]:
         elif key == "Reference ID" and addr:
             out[addr]["refid"] = _refid(val)
         elif key == "Peer delay" and addr:
-            try:
+            with contextlib.suppress(ValueError, IndexError):
                 out[addr]["delay"] = float(val.split()[0])
-            except (ValueError, IndexError):
-                pass
     return out
 
 
-def chrony_pn(sources: str, sourcestats: Optional[str], ntpdata: Optional[str]) -> List[Dict[str, Any]]:
+def chrony_pn(sources: str, sourcestats: str | None, ntpdata: str | None) -> list[dict[str, Any]]:
     """chronyc -c sources -> ntpq_pn.json shape."""
     sd = chrony_stddevs(sourcestats)
     nd = chrony_ntpdata(ntpdata)
@@ -154,7 +150,7 @@ def chrony_pn(sources: str, sourcestats: Optional[str], ntpdata: Optional[str]) 
 # --- ntpd -------------------------------------------------------------------
 
 
-def ntpq_rv(text: str) -> Dict[str, Any]:
+def ntpq_rv(text: str) -> dict[str, Any]:
     """ntpq -c rv -> dict. Quoted values may hold commas and spaces."""
     tokens, cur, quoted = [], "", False
     for ch in text:
@@ -169,19 +165,22 @@ def ntpq_rv(text: str) -> Dict[str, Any]:
             cur += ch
     if cur.strip():
         tokens.append(cur.strip())
-    result: Dict[str, Any] = {}
+    result: dict[str, Any] = {}
     for tok in tokens:
         key, sep, val = tok.partition("=")
         if sep and key.strip():
             result[key.strip()] = val.strip().strip('"')
     if "leap" in result and "leap_status" not in result:
-        result["leap_status"] = {"00": "Normal", "01": "Insert second", "10": "Delete second", "11": "Not synchronised"}.get(
-            result["leap"], result["leap"]
-        )
+        result["leap_status"] = {
+            "00": "Normal",
+            "01": "Insert second",
+            "10": "Delete second",
+            "11": "Not synchronised",
+        }.get(result["leap"], result["leap"])
     return result
 
 
-def ntpq_pn(text: str) -> List[Dict[str, Any]]:
+def ntpq_pn(text: str) -> list[dict[str, Any]]:
     """ntpq -pn -> ntpq_pn.json shape."""
     out = []
     for line in text.splitlines()[2:]:
@@ -215,7 +214,7 @@ def ntpq_pn(text: str) -> List[Dict[str, Any]]:
 # --- gpsd -------------------------------------------------------------------
 
 
-def read_gpsd_sky(host: str, port: int, timeout: float) -> Optional[Dict[str, Any]]:
+def read_gpsd_sky(host: str, port: int, timeout: float) -> dict[str, Any] | None:
     """Return the first SKY report that lists satellites, or None."""
     deadline = time.monotonic() + timeout
     try:
@@ -242,7 +241,13 @@ def read_gpsd_sky(host: str, port: int, timeout: float) -> Optional[Dict[str, An
 
 
 class LocalSource:
-    def __init__(self, ntp: str = "auto", gpsd_host: str = "127.0.0.1", gpsd_port: int = 2947, timeout: float = 10.0):
+    def __init__(
+        self,
+        ntp: str = "auto",
+        gpsd_host: str = "127.0.0.1",
+        gpsd_port: int = 2947,
+        timeout: float = 10.0,
+    ):
         self.ntp = ntp
         self.gpsd_host = gpsd_host
         self.gpsd_port = gpsd_port
@@ -257,7 +262,7 @@ class LocalSource:
             return "chrony"
         return "ntpd"
 
-    def system(self) -> Optional[SystemSample]:
+    def system(self) -> SystemSample | None:
         ts = int(time.time())
         if self._daemon() == "chrony":
             tracking = _run(["chronyc", "-n", "-c", "tracking"], self.timeout)
@@ -268,7 +273,7 @@ class LocalSource:
         rv = _run(["ntpq", "-c", "rv"], self.timeout)
         return system_from_crv(ts, ntpq_rv(rv)) if rv else None
 
-    def peers(self) -> Optional[List[PeerSample]]:
+    def peers(self) -> list[PeerSample] | None:
         ts = int(time.time())
         if self._daemon() == "chrony":
             sources = _run(["chronyc", "-n", "-c", "sources"], self.timeout)
@@ -280,7 +285,7 @@ class LocalSource:
         pn = _run(["ntpq", "-pn"], self.timeout)
         return peers_from_pn(ts, ntpq_pn(pn)) if pn else None
 
-    def gps(self) -> Optional[GpsSample]:
+    def gps(self) -> GpsSample | None:
         sky = read_gpsd_sky(self.gpsd_host, self.gpsd_port, self.timeout)
         if sky is None:
             return None

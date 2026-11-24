@@ -39,7 +39,9 @@ class Collector:
         db = Path(cfg["paths"]["db"])
         db.parent.mkdir(parents=True, exist_ok=True)
         ret = cfg["retention"]
-        self.store = Store(str(db), raw_days=ret["raw_days"], days_5m=ret["days_5m"], days_1h=ret["days_1h"])
+        self.store = Store(
+            str(db), raw_days=ret["raw_days"], days_5m=ret["days_5m"], days_1h=ret["days_1h"]
+        )
         self.source = make_source(cfg)
         self.source_name = cfg["source"]["type"]
         self.www = cfg["paths"]["www"]

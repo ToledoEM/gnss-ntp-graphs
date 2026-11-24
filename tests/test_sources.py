@@ -13,9 +13,18 @@ def read(name):
 
 def test_system_from_ntpd_bridge_strings():
     # The bridge's ntpd endpoint publishes every value as a string
-    crv = {"refid": "192.168.1.1", "stratum": "2", "offset": "-0.045123", "sys_jitter": "0.123456",
-           "clk_jitter": "0.089", "frequency": "-4.371", "clk_wander": "0.012", "rootdelay": "12.345",
-           "rootdisp": "32.211", "leap": "00"}
+    crv = {
+        "refid": "192.168.1.1",
+        "stratum": "2",
+        "offset": "-0.045123",
+        "sys_jitter": "0.123456",
+        "clk_jitter": "0.089",
+        "frequency": "-4.371",
+        "clk_wander": "0.012",
+        "rootdelay": "12.345",
+        "rootdisp": "32.211",
+        "leap": "00",
+    }
     s = base.system_from_crv(100, crv)
     assert s.stratum == 2 and s.offset == -0.045123 and s.wander == 0.012 and s.leap == "00"
 
@@ -65,7 +74,9 @@ def test_chrony_tracking_matches_bridge_mapping():
 
 
 def test_chrony_sources():
-    pn = local.chrony_pn(read("chronyc_sources.csv"), read("chronyc_sourcestats.csv"), read("chronyc_ntpdata.txt"))
+    pn = local.chrony_pn(
+        read("chronyc_sources.csv"), read("chronyc_sourcestats.csv"), read("chronyc_ntpdata.txt")
+    )
     assert [p["remote"] for p in pn] == ["GPS", "45.154.197.21", "45.138.55.61"]
     gps, net, dead = pn
     assert gps["refid"] == ".GPS." and gps["t"] == "l" and gps["tally"] == "*" and gps["poll"] == 16
@@ -86,7 +97,12 @@ def test_bridge_source(tmp_path, monkeypatch):
     assert src.peers()[0].reach == 255
     assert src.gps() is None
     # gpsd down: bridge publishes a processed record with no timestamp
-    payload["gps.json"] = {"timestamp": None, "total_satellites": 0, "satellites": [], "dop_values": {}}
+    payload["gps.json"] = {
+        "timestamp": None,
+        "total_satellites": 0,
+        "satellites": [],
+        "dop_values": {},
+    }
     assert src.gps() is None
     payload["gps.json"] = {"timestamp": "2026-11-24T10:00:00Z", "satellites": [], "dop_values": {}}
     assert src.gps().total == 0
@@ -94,6 +110,7 @@ def test_bridge_source(tmp_path, monkeypatch):
 
 def test_unsynced_system_not_in_series(tmp_path):
     from gnss_ntp_graphs.store import Store
+
     st = Store(str(tmp_path / "s.db"))
     st.add_system(base.SystemSample(ts=1, stratum=0, rootdelay=1000.0, leap="Not synchronised"))
     assert st.db.execute("SELECT COUNT(*) FROM system").fetchone()[0] == 0

@@ -15,8 +15,13 @@ def main(argv=None) -> int:
     ap.add_argument("-c", "--config", help="TOML file (default: built-in defaults + GNG_* env)")
     ap.add_argument("-v", "--verbose", action="store_true")
     ap.add_argument("--version", action="version", version=__version__)
-    ap.add_argument("command", nargs="?", default="run", choices=["run", "once"],
-                    help="run: collect forever (default); once: one poll + full export, then exit")
+    ap.add_argument(
+        "command",
+        nargs="?",
+        default="run",
+        choices=["run", "once"],
+        help="run: collect forever (default); once: one poll + full export, then exit",
+    )
     args = ap.parse_args(argv)
     logging.basicConfig(
         level=logging.DEBUG if args.verbose else logging.INFO,

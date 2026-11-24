@@ -7,7 +7,7 @@ wander in ppm. Offset sign is source-minus-local, as ntpq prints it.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 # gnssid -> constellation, per the gpsd JSON protocol (SKY object)
 GNSS_IDS = {
@@ -24,7 +24,7 @@ CONSTELLATIONS = ["gps", "galileo", "glonass", "beidou", "qzss", "sbas", "navic"
 DOPS = ["hdop", "vdop", "pdop", "gdop", "tdop"]
 
 
-def to_float(value: Any) -> Optional[float]:
+def to_float(value: Any) -> float | None:
     """Coerce bridge values to float. ntpd fields arrive as strings."""
     if value is None or isinstance(value, bool):
         return None
@@ -34,7 +34,7 @@ def to_float(value: Any) -> Optional[float]:
         return None
 
 
-def to_int(value: Any) -> Optional[int]:
+def to_int(value: Any) -> int | None:
     f = to_float(value)
     return None if f is None else int(f)
 
@@ -42,16 +42,16 @@ def to_int(value: Any) -> Optional[int]:
 @dataclass
 class SystemSample:
     ts: int
-    offset: Optional[float] = None
-    sys_jitter: Optional[float] = None
-    clk_jitter: Optional[float] = None
-    frequency: Optional[float] = None
-    wander: Optional[float] = None
-    rootdelay: Optional[float] = None
-    rootdisp: Optional[float] = None
-    stratum: Optional[int] = None
-    refid: Optional[str] = None
-    leap: Optional[str] = None
+    offset: float | None = None
+    sys_jitter: float | None = None
+    clk_jitter: float | None = None
+    frequency: float | None = None
+    wander: float | None = None
+    rootdelay: float | None = None
+    rootdisp: float | None = None
+    stratum: int | None = None
+    refid: str | None = None
+    leap: str | None = None
 
 
 @dataclass
@@ -60,13 +60,13 @@ class PeerSample:
     remote: str
     tally: str = ""
     refid: str = ""
-    stratum: Optional[int] = None
+    stratum: int | None = None
     type: str = ""
-    poll: Optional[float] = None
-    reach: Optional[int] = None
-    delay: Optional[float] = None
-    offset: Optional[float] = None
-    jitter: Optional[float] = None
+    poll: float | None = None
+    reach: int | None = None
+    delay: float | None = None
+    offset: float | None = None
+    jitter: float | None = None
 
 
 @dataclass
@@ -74,14 +74,14 @@ class GpsSample:
     ts: int
     total: int = 0
     used: int = 0
-    avg_ss: Optional[float] = None
-    visible_by: Dict[str, int] = field(default_factory=dict)
-    used_by: Dict[str, int] = field(default_factory=dict)
-    dops: Dict[str, Optional[float]] = field(default_factory=dict)
-    satellites: List[Dict[str, Any]] = field(default_factory=list)
+    avg_ss: float | None = None
+    visible_by: dict[str, int] = field(default_factory=dict)
+    used_by: dict[str, int] = field(default_factory=dict)
+    dops: dict[str, float | None] = field(default_factory=dict)
+    satellites: list[dict[str, Any]] = field(default_factory=list)
 
 
-def system_from_crv(ts: int, crv: Dict[str, Any]) -> Optional[SystemSample]:
+def system_from_crv(ts: int, crv: dict[str, Any]) -> SystemSample | None:
     """Build a SystemSample from the ntpq_crv.json shape (bridge or local)."""
     if not isinstance(crv, dict) or "error" in crv:
         return None
@@ -101,7 +101,7 @@ def system_from_crv(ts: int, crv: Dict[str, Any]) -> Optional[SystemSample]:
     )
 
 
-def peers_from_pn(ts: int, pn: Any) -> Optional[List[PeerSample]]:
+def peers_from_pn(ts: int, pn: Any) -> list[PeerSample] | None:
     """Build PeerSamples from the ntpq_pn.json shape (bridge or local)."""
     if not isinstance(pn, list):
         return None
@@ -127,7 +127,7 @@ def peers_from_pn(ts: int, pn: Any) -> Optional[List[PeerSample]]:
     return out
 
 
-def gps_from_sky(ts: int, satellites: Any, dops: Dict[str, Any]) -> GpsSample:
+def gps_from_sky(ts: int, satellites: Any, dops: dict[str, Any]) -> GpsSample:
     """Build a GpsSample from a gpsd SKY satellite list and DOP values.
 
     Per-constellation used counts are derived from the list, since the bridge

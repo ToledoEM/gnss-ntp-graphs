@@ -18,11 +18,31 @@ def filled_store(tmp_path, days=2):
     sky = json.loads((FIX / "gps_sky_multignss.json").read_text())
     for i in range(int(days * 1440)):
         ts = NOW - days * 86400 + i * 60
-        st._insert("system", [SystemSample(ts=ts, offset=rng.gauss(0, 0.01), sys_jitter=0.005, frequency=-4.3,
-                                           wander=0.01, rootdelay=0.0, rootdisp=0.01, stratum=1, refid="GPS",
-                                           leap="Normal").__dict__])
-        st._insert("peers", [PeerSample(ts=ts, remote="GPS", tally="*", reach=255, offset=0.001, delay=0.0,
-                                        jitter=0.002).__dict__])
+        st._insert(
+            "system",
+            [
+                SystemSample(
+                    ts=ts,
+                    offset=rng.gauss(0, 0.01),
+                    sys_jitter=0.005,
+                    frequency=-4.3,
+                    wander=0.01,
+                    rootdelay=0.0,
+                    rootdisp=0.01,
+                    stratum=1,
+                    refid="GPS",
+                    leap="Normal",
+                ).__dict__
+            ],
+        )
+        st._insert(
+            "peers",
+            [
+                PeerSample(
+                    ts=ts, remote="GPS", tally="*", reach=255, offset=0.001, delay=0.0, jitter=0.002
+                ).__dict__
+            ],
+        )
     st.add_gps(gps_from_sky(NOW, sky["satellites"], sky))
     st.db.commit()
     return st
@@ -43,7 +63,10 @@ def test_rollup_and_retention(tmp_path):
         st._insert("system", [{"ts": ts, "offset": 1.0, "stratum": 1, "refid": "GPS"}])
     st.db.commit()
     st.rollup(now=NOW)
-    count = lambda t: st.db.execute(f"SELECT COUNT(*) FROM {t}").fetchone()[0]
+
+    def count(t):
+        return st.db.execute(f"SELECT COUNT(*) FROM {t}").fetchone()[0]
+
     assert count("system") == 1440
     assert 2 * 288 - 1 <= count("system_5m") <= 2 * 288 + 1
     assert count("system_1h") == 72

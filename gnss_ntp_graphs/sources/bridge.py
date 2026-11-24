@@ -7,7 +7,7 @@ import logging
 import time
 import urllib.error
 import urllib.request
-from typing import Any, List, Optional
+from typing import Any
 
 from .base import GpsSample, PeerSample, SystemSample, gps_from_sky, peers_from_pn, system_from_crv
 
@@ -22,19 +22,20 @@ class BridgeSource:
     def _get(self, name: str) -> Any:
         url = self.base_url + name
         try:
-            with urllib.request.urlopen(url, timeout=self.timeout) as resp:
+            # URL comes from [source] bridge_url in the admin-owned config
+            with urllib.request.urlopen(url, timeout=self.timeout) as resp:  # noqa: S310
                 return json.loads(resp.read().decode("utf-8"))
         except (urllib.error.URLError, OSError, ValueError) as e:
             log.warning("bridge %s: %s", url, e)
             return None
 
-    def system(self) -> Optional[SystemSample]:
+    def system(self) -> SystemSample | None:
         return system_from_crv(int(time.time()), self._get("ntpq_crv.json"))
 
-    def peers(self) -> Optional[List[PeerSample]]:
+    def peers(self) -> list[PeerSample] | None:
         return peers_from_pn(int(time.time()), self._get("ntpq_pn.json"))
 
-    def gps(self) -> Optional[GpsSample]:
+    def gps(self) -> GpsSample | None:
         data = self._get("gps.json")
         if not isinstance(data, dict) or "error" in data:
             return None

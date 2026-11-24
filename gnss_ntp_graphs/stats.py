@@ -7,7 +7,7 @@ Percentile summaries follow ntpviz: 1/5/50/95/99 percentiles, the 90% range
 from __future__ import annotations
 
 import math
-from typing import Dict, List, Optional, Sequence, Tuple
+from collections.abc import Sequence
 
 PCTS = (1, 5, 50, 95, 99)
 
@@ -22,7 +22,7 @@ def percentile(sorted_vals: Sequence[float], p: float) -> float:
     return sorted_vals[lo] + (sorted_vals[hi] - sorted_vals[lo]) * (k - lo)
 
 
-def summary(values: Sequence[Optional[float]]) -> Optional[Dict[str, float]]:
+def summary(values: Sequence[float | None]) -> dict[str, float] | None:
     vals = sorted(v for v in values if v is not None)
     if not vals:
         return None
@@ -42,7 +42,9 @@ def summary(values: Sequence[Optional[float]]) -> Optional[Dict[str, float]]:
     return {k: round(v, 6) if isinstance(v, float) else v for k, v in out.items()}
 
 
-def histogram(values: Sequence[Optional[float]], bins: int = 50, clip_pct: float = 1.0) -> Optional[Dict[str, List[float]]]:
+def histogram(
+    values: Sequence[float | None], bins: int = 50, clip_pct: float = 1.0
+) -> dict[str, list[float]] | None:
     """Histogram between the clip_pct and 100-clip_pct percentiles.
 
     Outliers beyond those bounds are counted in the edge bins, as ntpviz does
@@ -63,20 +65,22 @@ def histogram(values: Sequence[Optional[float]], bins: int = 50, clip_pct: float
     return {"x": centers, "count": counts, "width": width}
 
 
-def regularise(samples: Sequence[Tuple[int, Optional[float]]], tau0: int) -> List[Optional[float]]:
+def regularise(samples: Sequence[tuple[int, float | None]], tau0: int) -> list[float | None]:
     """Place (ts, value) samples on a grid of tau0 seconds; gaps become None."""
     pts = [(ts, v) for ts, v in samples if v is not None]
     if not pts:
         return []
     t0 = pts[0][0]
     n = (pts[-1][0] - t0) // tau0 + 1
-    grid: List[Optional[float]] = [None] * n
+    grid: list[float | None] = [None] * n
     for ts, v in pts:
         grid[min((ts - t0 + tau0 // 2) // tau0, n - 1)] = v
     return grid
 
 
-def allan_deviation(x: Sequence[Optional[float]], tau0: float, max_points: int = 30) -> Dict[str, List[float]]:
+def allan_deviation(
+    x: Sequence[float | None], tau0: float, max_points: int = 30
+) -> dict[str, list[float]]:
     """Overlapping Allan deviation from time-error samples x (seconds).
 
     x is on a regular tau0 grid. Triples containing a gap are skipped. Returns

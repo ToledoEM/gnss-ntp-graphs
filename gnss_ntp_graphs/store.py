@@ -11,12 +11,22 @@ from __future__ import annotations
 import json
 import sqlite3
 import time
+from collections.abc import Iterable, Sequence
 from dataclasses import asdict
-from typing import Any, Dict, Iterable, List, Optional, Sequence, Tuple
+from typing import Any
 
 from .sources.base import CONSTELLATIONS, DOPS, GpsSample, PeerSample, SystemSample
 
-SYSTEM_NUM = ["offset", "sys_jitter", "clk_jitter", "frequency", "wander", "rootdelay", "rootdisp", "stratum"]
+SYSTEM_NUM = [
+    "offset",
+    "sys_jitter",
+    "clk_jitter",
+    "frequency",
+    "wander",
+    "rootdelay",
+    "rootdisp",
+    "stratum",
+]
 SYSTEM_TXT = ["refid", "leap"]
 PEER_NUM = ["stratum", "poll", "reach", "delay", "offset", "jitter"]
 PEER_TXT = ["tally", "refid", "type"]
@@ -36,14 +46,16 @@ TABLES = {
 TIERS = [("", 0), ("_5m", 300), ("_1h", 3600)]
 
 
-def _ddl(name: str) -> List[str]:
+def _ddl(name: str) -> list[str]:
     keys, num, txt = TABLES[name]
     out = []
     for suffix, _ in TIERS:
         cols = ["ts INTEGER NOT NULL"] + [f"{k} TEXT NOT NULL" for k in keys]
         cols += [f"{c} REAL" for c in num] + [f"{c} TEXT" for c in txt]
         pk = ", ".join(["ts"] + keys)
-        out.append(f"CREATE TABLE IF NOT EXISTS {name}{suffix} ({', '.join(cols)}, PRIMARY KEY ({pk}))")
+        out.append(
+            f"CREATE TABLE IF NOT EXISTS {name}{suffix} ({', '.join(cols)}, PRIMARY KEY ({pk}))"
+        )
     return out
 
 
@@ -64,7 +76,7 @@ class Store:
 
     # --- writes -------------------------------------------------------------
 
-    def _insert(self, table: str, rows: Iterable[Dict[str, Any]]) -> None:
+    def _insert(self, table: str, rows: Iterable[dict[str, Any]]) -> None:
         rows = list(rows)
         if not rows:
             return
@@ -93,7 +105,7 @@ class Store:
         self.db.commit()
 
     def add_gps(self, g: GpsSample) -> None:
-        row: Dict[str, Any] = {"ts": g.ts, "total": g.total, "used": g.used, "avg_ss": g.avg_ss}
+        row: dict[str, Any] = {"ts": g.ts, "total": g.total, "used": g.used, "avg_ss": g.avg_ss}
         for c in CONSTELLATIONS:
             row[f"vis_{c}"] = g.visible_by.get(c, 0)
             row[f"used_{c}"] = g.used_by.get(c, 0)
@@ -105,7 +117,7 @@ class Store:
 
     # --- maintenance --------------------------------------------------------
 
-    def rollup(self, now: Optional[int] = None) -> None:
+    def rollup(self, now: int | None = None) -> None:
         """Rebuild rollup buckets touched since the last run, then prune."""
         now = int(now if now is not None else time.time())
         for name, (keys, num, txt) in TABLES.items():
@@ -126,7 +138,9 @@ class Store:
                 self.set_meta(mark, now)
                 prev = suffix
             for suffix, _ in TIERS:
-                self.db.execute(f"DELETE FROM {name}{suffix} WHERE ts < ?", (now - self.retention[suffix],))
+                self.db.execute(
+                    f"DELETE FROM {name}{suffix} WHERE ts < ?", (now - self.retention[suffix],)
+                )
         self.db.commit()
 
     # --- reads --------------------------------------------------------------
@@ -146,9 +160,9 @@ class Store:
         start: int,
         end: int,
         step: int,
-        where: Optional[Tuple[str, Any]] = None,
-        now: Optional[int] = None,
-    ) -> Dict[str, List[Any]]:
+        where: tuple[str, Any] | None = None,
+        now: int | None = None,
+    ) -> dict[str, list[Any]]:
         """Bucketed averages on a regular grid; missing buckets are None."""
         now = int(now if now is not None else time.time())
         tier = self._tier(start, now)
@@ -163,12 +177,17 @@ class Store:
         ).fetchall()
         by_b = {r[0]: r[1:] for r in rows}
         grid = list(range((start // step) * step, end, step))
-        out: Dict[str, List[Any]] = {"t": grid}
+        out: dict[str, list[Any]] = {"t": grid}
         for i, c in enumerate(columns):
-            out[c] = [None if by_b.get(b) is None or by_b[b][i] is None else round(by_b[b][i], 6) for b in grid]
+            out[c] = [
+                None if by_b.get(b) is None or by_b[b][i] is None else round(by_b[b][i], 6)
+                for b in grid
+            ]
         return out
 
-    def raw(self, table: str, columns: Sequence[str], start: int, where: Optional[Tuple[str, Any]] = None) -> List[Tuple]:
+    def raw(
+        self, table: str, columns: Sequence[str], start: int, where: tuple[str, Any] | None = None
+    ) -> list[tuple]:
         cond, args = "ts >= ?", [start]
         if where:
             cond += f" AND {where[0]} = ?"
@@ -177,7 +196,12 @@ class Store:
             f"SELECT ts, {', '.join(columns)} FROM {table} WHERE {cond} ORDER BY ts", args
         ).fetchall()
 
-    def peer_names(self, start: int, now: Optional[int] = None) -> List[str]:
+    def peer_names(self, start: int, now: int | None = None) -> list[str]:
         now = int(now if now is not None else time.time())
         tier = self._tier(start, now)
-        return [r[0] for r in self.db.execute(f"SELECT DISTINCT remote FROM peers{tier} WHERE ts >= ? ORDER BY remote", (start,))]
+        return [
+            r[0]
+            for r in self.db.execute(
+                f"SELECT DISTINCT remote FROM peers{tier} WHERE ts >= ? ORDER BY remote", (start,)
+            )
+        ]

@@ -14,20 +14,19 @@ import calendar
 import glob
 import logging
 import time
-from typing import List, Tuple
 
 log = logging.getLogger(__name__)
 
-Row = Tuple[int, float, float]  # ts, offset_ms, frequency_ppm
+Row = tuple[int, float, float]  # ts, offset_ms, frequency_ppm
 
 
-def _files(pattern: str) -> List[str]:
+def _files(pattern: str) -> list[str]:
     # Rotated files (loopstats.20261124, tracking.log.1) sort before the live one
     found = [p for p in glob.glob(pattern + "*") if not p.endswith((".gz", ".xz", ".bz2"))]
     return sorted(found, key=lambda p: (p == pattern, p))
 
 
-def parse_chrony_tracking(lines, since: int) -> List[Row]:
+def parse_chrony_tracking(lines, since: int) -> list[Row]:
     out = []
     for line in lines:
         p = line.split()
@@ -44,7 +43,7 @@ def parse_chrony_tracking(lines, since: int) -> List[Row]:
     return out
 
 
-def parse_ntpd_loopstats(lines, since: int) -> List[Row]:
+def parse_ntpd_loopstats(lines, since: int) -> list[Row]:
     out = []
     for line in lines:
         p = line.split()
@@ -60,9 +59,11 @@ def parse_ntpd_loopstats(lines, since: int) -> List[Row]:
     return out
 
 
-def read_log(kind: str, path: str, since: int) -> List[Row]:
-    parser = {"chrony_tracking": parse_chrony_tracking, "ntpd_loopstats": parse_ntpd_loopstats}[kind]
-    rows: List[Row] = []
+def read_log(kind: str, path: str, since: int) -> list[Row]:
+    parser = {"chrony_tracking": parse_chrony_tracking, "ntpd_loopstats": parse_ntpd_loopstats}[
+        kind
+    ]
+    rows: list[Row] = []
     for f in _files(path):
         try:
             with open(f, errors="replace") as fh:

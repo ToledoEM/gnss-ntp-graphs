@@ -12,18 +12,18 @@ import json
 import os
 import tomllib
 from pathlib import Path
-from typing import Any, Dict, Optional
+from typing import Any
 
 COLORBREWER = Path(__file__).resolve().parent / "web" / "vendor" / "colorbrewer-qual.json"
 
 
-def palettes() -> Dict[str, Dict[str, Any]]:
+def palettes() -> dict[str, dict[str, Any]]:
     """ColorBrewer qualitative schemes: {name: {"classes": {n: [hex]}, "blind": [...]}}."""
     with open(COLORBREWER) as fh:
         return json.load(fh)["schemes"]
 
 
-def safe_classes(scheme: Dict[str, Any]) -> int:
+def safe_classes(scheme: dict[str, Any]) -> int:
     """Largest class count ColorBrewer marks colourblind safe (blind flag 1), 0 if none."""
     safe = [i + 3 for i, flag in enumerate(scheme["blind"]) if flag == 1]
     return max(safe) if safe else 0
@@ -32,13 +32,25 @@ def safe_classes(scheme: Dict[str, Any]) -> int:
 RANGE_NAMES = ["2h", "8h", "24h", "7d", "30d", "1y"]
 SECTIONS = ["ntp", "peers", "gps", "stats"]
 GRAPH_IDS = [
-    "offset", "jitter", "freq", "root", "stratum",
-    "peer-offset", "peer-delay", "peer-jitter", "peer-reach",
-    "sats", "const", "ss", "dop", "sky",
-    "hist", "adev",
+    "offset",
+    "jitter",
+    "freq",
+    "root",
+    "stratum",
+    "peer-offset",
+    "peer-delay",
+    "peer-jitter",
+    "peer-reach",
+    "sats",
+    "const",
+    "ss",
+    "dop",
+    "sky",
+    "hist",
+    "adev",
 ]
 
-DEFAULTS: Dict[str, Any] = {
+DEFAULTS: dict[str, Any] = {
     "source": {
         "type": "bridge",  # bridge | local
         "bridge_url": "http://127.0.0.1/",
@@ -70,7 +82,7 @@ DEFAULTS: Dict[str, Any] = {
     },
     "server": {
         "serve": False,
-        "bind": "0.0.0.0",
+        "bind": "0.0.0.0",  # noqa: S104 - LAN page server; set bind to narrow it
         "port": 8080,
     },
     "web": {
@@ -163,7 +175,7 @@ def _from_env(text: str, default: Any, where: str) -> Any:
     return text
 
 
-def _validate(cfg: Dict[str, Any]) -> None:
+def _validate(cfg: dict[str, Any]) -> None:
     for (sec, key), allowed in CHOICES.items():
         if cfg[sec][key] not in allowed:
             raise ConfigError(f"[{sec}] {key}: {cfg[sec][key]!r} not one of {sorted(allowed)}")
@@ -174,11 +186,17 @@ def _validate(cfg: Dict[str, Any]) -> None:
     if web["colourblind_safe"]:
         safe = sorted(n for n, s in schemes.items() if safe_classes(s))
         if web["palette"] not in safe:
-            raise ConfigError(f"[web] palette: {web['palette']!r} is not colourblind safe; with "
-                              f"colourblind_safe = true use one of {safe}")
+            raise ConfigError(
+                f"[web] palette: {web['palette']!r} is not colourblind safe; with "
+                f"colourblind_safe = true use one of {safe}"
+            )
     if web["columns"] not in ("auto", 1, 2, 3):
         raise ConfigError(f"[web] columns: {web['columns']!r} not one of auto, 1, 2, 3")
-    for key, allowed in (("sections", SECTIONS), ("ranges", RANGE_NAMES), ("hide_graphs", GRAPH_IDS)):
+    for key, allowed in (
+        ("sections", SECTIONS),
+        ("ranges", RANGE_NAMES),
+        ("hide_graphs", GRAPH_IDS),
+    ):
         bad = [v for v in web[key] if v not in allowed]
         if bad:
             raise ConfigError(f"[web] {key}: unknown {bad}, allowed {allowed}")
@@ -187,8 +205,12 @@ def _validate(cfg: Dict[str, Any]) -> None:
     if not web["ranges"]:
         raise ConfigError("[web] ranges: at least one range is needed")
     if web["default_range"] not in web["ranges"]:
-        raise ConfigError(f"[web] default_range: {web['default_range']!r} is not in ranges {web['ranges']}")
-    if not all(isinstance(v, (int, float)) and not isinstance(v, bool) for v in web["offset_lines"]):
+        raise ConfigError(
+            f"[web] default_range: {web['default_range']!r} is not in ranges {web['ranges']}"
+        )
+    if not all(
+        isinstance(v, (int, float)) and not isinstance(v, bool) for v in web["offset_lines"]
+    ):
         raise ConfigError("[web] offset_lines: numbers only")
     for gid, limits in cfg["graphs"].items():
         if gid not in GRAPH_IDS:
@@ -196,11 +218,15 @@ def _validate(cfg: Dict[str, Any]) -> None:
         if not isinstance(limits, dict):
             raise ConfigError(f"[graphs.{gid}]: must be a table")
         for k, v in limits.items():
-            if k not in ("y_min", "y_max") or not isinstance(v, (int, float)) or isinstance(v, bool):
+            if (
+                k not in ("y_min", "y_max")
+                or not isinstance(v, (int, float))
+                or isinstance(v, bool)
+            ):
                 raise ConfigError(f"[graphs.{gid}] {k}: only numeric y_min / y_max allowed")
 
 
-def load(path: Optional[str] = None) -> Dict[str, Any]:
+def load(path: str | None = None) -> dict[str, Any]:
     cfg = copy.deepcopy(DEFAULTS)
     if path:
         with open(path, "rb") as fh:
