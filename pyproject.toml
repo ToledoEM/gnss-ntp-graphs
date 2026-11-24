@@ -12,6 +12,7 @@ gnss-ntp-graphs = "gnss_ntp_graphs.__main__:main"
 
 [dependency-groups]
 dev = ["pytest>=8"]
+docs = ["zensical>=0.0.71"]
 
 [build-system]
 requires = ["setuptools>=69"]

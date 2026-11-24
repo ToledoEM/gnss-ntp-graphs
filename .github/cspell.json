@@ -1,0 +1,40 @@
+{
+  "version": "0.2",
+  "language": "en-GB",
+  "globRoot": "..",
+  "files": [
+    "docs/**/*.md"
+  ],
+  "ignoreRegExpList": [
+    "/^\\s*```[\\s\\S]*?^\\s*```/gm",
+    "/`[^`\\n]+`/g",
+    "/<[^>]+>/g"
+  ],
+  "words": [
+    "ADEV",
+    "chrony",
+    "chrony's",
+    "chronyd",
+    "colourblind",
+    "disp",
+    "falseticker",
+    "gpsd",
+    "gpsd's",
+    "GPSNTPHomeBridge",
+    "HDOP",
+    "lighttpd",
+    "NMEA",
+    "ntpsec",
+    "pytest",
+    "refclock",
+    "refclock's",
+    "refclocks",
+    "refid",
+    "rollups",
+    "rootdelay",
+    "rootdisp",
+    "stddev",
+    "TDOP",
+    "Zensical"
+  ]
+}
