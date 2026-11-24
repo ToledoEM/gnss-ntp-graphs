@@ -1,5 +1,7 @@
 # gnss-ntp-graphs
 
+<p align="center"><img src="docs/assets/logo.png" alt="GNSS NTP Graphs logo" width="160"></p>
+
 History graphs for a GPS-disciplined NTP server, in the style of graphs1090. A small Python collector records chrony or ntpd and gpsd readings into SQLite and writes JSON files that a static page draws.
 
 It runs alongside [GPSNTPHomeBridge](https://github.com/ToledoEM/GPSNTPHomeBridge), the bridge that feeds the same server into Home Assistant, and leaves it untouched. It needs Python 3.11 or newer and no pip packages.
