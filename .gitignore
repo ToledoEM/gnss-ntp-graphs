@@ -13,3 +13,5 @@ dist/
 site/
 .cache/
 .DS_Store
+.coverage
+coverage.xml
