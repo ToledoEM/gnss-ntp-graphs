@@ -1,7 +1,7 @@
 """Read the NTP daemon and gpsd on this machine.
 
 Only monitoring commands are run (chronyc tracking/sources/sourcestats/ntpdata,
-ntpq rv/peers). Nothing is written to the daemons, to gpsd, or to the bridge's
+ntpq rv/peers, vcgencmd measure_temp). Nothing is written to the daemons, to gpsd, or to the bridge's
 files. gpsd accepts many clients, so this runs alongside the bridge.
 
 Field mapping matches the bridge's ntp_service_chronyd.sh, so graphs look the
@@ -13,13 +13,23 @@ from __future__ import annotations
 import contextlib
 import json
 import logging
+import re
 import shutil
 import socket
 import subprocess
 import time
+from pathlib import Path
 from typing import Any
 
-from .base import GpsSample, PeerSample, SystemSample, gps_from_sky, peers_from_pn, system_from_crv
+from .base import (
+    GpsSample,
+    HostSample,
+    PeerSample,
+    SystemSample,
+    gps_from_sky,
+    peers_from_pn,
+    system_from_crv,
+)
 
 log = logging.getLogger(__name__)
 
@@ -238,6 +248,54 @@ def read_gpsd_sky(host: str, port: int, timeout: float) -> dict[str, Any] | None
     except OSError as e:
         log.warning("gpsd %s:%s: %s", host, port, e)
     return None
+
+
+# --- host -------------------------------------------------------------------
+
+THERMAL_ZONE = Path("/sys/class/thermal/thermal_zone0/temp")
+_TEMP_RE = re.compile(r"temp=(-?\d+(?:\.\d+)?)'C")
+
+
+def vcgencmd_temp(text: str | None) -> float | None:
+    """vcgencmd measure_temp -> °C. "temp=48.3'C" -> 48.3."""
+    m = _TEMP_RE.search(text or "")
+    return float(m.group(1)) if m else None
+
+
+def thermal_zone_temp(text: str | None) -> float | None:
+    """/sys/class/thermal/.../temp holds millidegrees C."""
+    try:
+        return round(int((text or "").strip()) / 1000.0, 3)
+    except ValueError:
+        return None
+
+
+class HostTemp:
+    """CPU temperature of the machine the collector runs on.
+
+    Tries `vcgencmd measure_temp` (Raspberry Pi), then the kernel thermal
+    zone. Machines with neither return None and log it once.
+    """
+
+    def __init__(self, timeout: float = 10.0, zone: Path = THERMAL_ZONE):
+        self.timeout = timeout
+        self.zone = zone
+        self.missing_logged = False
+
+    def read(self) -> HostSample | None:
+        ts = int(time.time())
+        temp = None
+        if shutil.which("vcgencmd"):
+            temp = vcgencmd_temp(_run(["vcgencmd", "measure_temp"], self.timeout))
+        if temp is None:
+            with contextlib.suppress(OSError):
+                temp = thermal_zone_temp(self.zone.read_text())
+        if temp is None:
+            if not self.missing_logged:
+                log.info("no CPU temperature on this host (no vcgencmd, no %s)", self.zone)
+                self.missing_logged = True
+            return None
+        return HostSample(ts=ts, cpu_temp=temp)
 
 
 class LocalSource:

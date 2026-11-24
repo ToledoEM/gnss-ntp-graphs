@@ -173,7 +173,7 @@
         scale: s.scale || "y",
         fill: s.fill,
         paths: s.paths,
-        points: { show: false },
+        points: s.points || { show: false },
         spanGaps: false,
         value: s.value || ((u, v) => fmt(v, s.digits === undefined ? 3 : s.digits)),
       }))),
@@ -236,6 +236,8 @@
       `sync peer <b>${sync ? sync.remote : "none"}</b>`,
       `leap <b>${s.leap ?? "–"}</b>`,
       `sats <b>${g.used ?? "–"}/${g.total ?? "–"}</b>`,
+      ...(cur.host && cur.host.cpu_temp !== null && cur.host.cpu_temp !== undefined
+        ? [`cpu <b>${fmt(cur.host.cpu_temp, 1)} °C</b>`] : []),
       `updated <b class="${stale}">${age}s ago</b>`,
     ].map((x) => `<span>${x}</span>`).join("");
     $("footer").textContent = `gnss-ntp-graphs ${cur.version} · source: ${cur.source} · ` +
@@ -244,7 +246,34 @@
 
   /* --- sections ---------------------------------------------------------- */
 
-  function renderNtp(sys) {
+  /* CPU temperature graphs only appear once the collector has recorded a temperature. */
+  function showHostGraphs(cur) {
+    const has = !!(cur && cur.host);
+    document.querySelectorAll("figure[data-host]").forEach((f) => {
+      f.hidden = !has || CFG.web.hide_graphs.includes(f.dataset.graph);
+    });
+  }
+
+  /* Scatter of y against CPU temperature with its least-squares line. */
+  function thermalScatter(id, label, temp, ys, fit, k, digits, yUnit) {
+    const pts = temp.map((t, i) => [t, ys[i] === null || ys[i] === undefined ? null : ys[i] * k])
+      .filter((p) => p[0] !== null && p[1] !== null).sort((a, b) => a[0] - b[0]);
+    const cap = $("fit-" + id);
+    if (cap) cap.textContent = fit ? `(slope ${fmt(fit.slope * k, digits)} ${yUnit}/°C, r ${fmt(fit.r, 2)}, n ${fit.n})` : "";
+    if (!pts.length) return plot(id, [], [[]]);
+    const x = pts.map((p) => p[0]);
+    const pc = colours(2);
+    const series = [{ label, digits, colour: pc[1].colour, paths: () => null,
+                      points: { show: true, size: 4, stroke: pc[1].colour, fill: pc[1].colour } }];
+    const data = [x, pts.map((p) => p[1])];
+    if (fit) {
+      series.push({ label: "fit", digits, colour: pc[0].colour, dash: [6, 4] });
+      data.push(x.map((t) => (fit.slope * t + fit.intercept) * k));
+    }
+    plot(id, series, data, { scales: { x: { time: false }, y: {} }, xLabel: "CPU °C", time: false });
+  }
+
+  function renderNtp(sys, host) {
     const t = sys.t, d = DIG();
     plot("offset", [{ label: "offset", digits: d }], [t, scale(sys.offset)],
       { lines: CFG.web.offset_lines.map((v) => v * K()) });
@@ -256,6 +285,10 @@
       [t, scale(sys.rootdelay), scale(sys.rootdisp)]);
     plot("stratum", [{ label: "stratum", digits: 0 }], [t, sys.stratum],
       { height: Math.round(CFG.web.graph_height * 0.75) });
+    if (host) {
+      plot("temp", [{ label: "CPU °C", digits: 1 }, { label: "frequency", scale: "y2" }],
+        [t, host.cpu_temp, sys.frequency], { scales: { x: { time: true }, y: {}, y2: {} } });
+    }
   }
 
   function renderPeers(peers) {
@@ -376,6 +409,15 @@
           yAxis: { values: (u, vs) => vs.map((v) => (v === null || v === undefined) ? "" : v.toExponential(0)) } });
     } else plot("adev", [], [[]]);
 
+    const th = w.thermal;
+    if (th) {
+      thermalScatter("temp-freq", "frequency ppm", th.temp, th.frequency, th.fit_frequency, 1, 3, "ppm");
+      thermalScatter("temp-offset", `offset ${u}`, th.temp, th.offset, th.fit_offset, K(), d, u);
+    } else {
+      plot("temp-freq", [], [[]]); plot("temp-offset", [], [[]]);
+      ["fit-temp-freq", "fit-temp-offset"].forEach((id) => { $(id).textContent = ""; });
+    }
+
     const cols = ["n", "mean", "stddev", "p1", "p5", "p50", "p95", "p99", "range90", "range98"];
     const row = (label, s, dg, k = 1) => s ? `<tr><td>${label}</td>` + cols.map((c) =>
       `<td>${c === "n" ? s[c] : fmt(s[c] * k, dg)}</td>`).join("") + "</tr>" : "";
@@ -385,7 +427,7 @@
       row(`offset ${u}`, w.offset, d, K()) + row(`sys jitter ${u}`, w.sys_jitter, d, K()) +
       row("frequency ppm", w.frequency, 3) +
       row(`root delay ${u}`, w.rootdelay, d, K()) + row(`root disp ${u}`, w.rootdisp, d, K()) +
-      row("sats used", g.used, 1) + row("avg SNR dB-Hz", g.avg_ss, 1) + row("TDOP", g.tdop, 2) + row("HDOP", g.hdop, 2);
+      row("CPU temp °C", w.cpu_temp, 1) + row("sats used", g.used, 1) + row("avg SNR dB-Hz", g.avg_ss, 1) + row("TDOP", g.tdop, 2) + row("HDOP", g.hdop, 2);
 
     const pr = Object.entries(w.peers || {}).map(([n, p]) =>
       `<tr><td>${n}</td><td>${p.offset ? p.offset.n : "–"}</td>` +
@@ -419,12 +461,13 @@
       const cur = await getJSON("current.json");
       state.current = cur;
       renderStatus(cur);
+      showHostGraphs(cur);
       setTopHeight();
       const needRange = ["ntp", "peers", "gps"].some(visible);
       if (needRange) {
         const r = await getJSON("range_" + state.range + ".json");
         state.lastRange = r;
-        if (visible("ntp")) renderNtp(r.system);
+        if (visible("ntp")) renderNtp(r.system, r.host);
         if (visible("peers")) { renderPeers(r.peers); renderPeerTable(cur.peers); }
         if (visible("gps")) { renderGps(r.gps); drawSky(cur.gps); }
       }

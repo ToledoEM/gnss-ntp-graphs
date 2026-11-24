@@ -12,6 +12,7 @@ from pathlib import Path
 
 from .export import Exporter, install_web
 from .sources import make_source
+from .sources.local import HostTemp
 from .store import Store
 
 log = logging.getLogger(__name__)
@@ -44,12 +45,14 @@ class Collector:
         )
         self.source = make_source(cfg)
         self.source_name = cfg["source"]["type"]
+        self.host = HostTemp(cfg["source"]["timeout"]) if cfg["source"]["host_temp"] else None
         self.www = cfg["paths"]["www"]
         self.exporter = Exporter(self.store, self.www, cfg)
         iv = cfg["intervals"]
         self.jobs = [
             (float(iv["ntp"]), self.poll_ntp),
             (float(iv["gps"]), self.poll_gps),
+            (float(iv["host"]), self.poll_host),
             (float(iv["export"]), self.export),
             (float(iv["rollup"]), self.store.rollup),
             (float(iv["stats"]), self.exporter.stats),
@@ -69,6 +72,13 @@ class Collector:
         if g is not None:
             self.store.add_gps(g)
 
+    def poll_host(self) -> None:
+        if self.host is None:
+            return
+        h = self.host.read()
+        if h is not None:
+            self.store.add_host(h)
+
     def export(self) -> None:
         self.exporter.current(self.source_name)
         self.exporter.ranges()
@@ -81,6 +91,7 @@ class Collector:
         self._install()
         self.poll_ntp()
         self.poll_gps()
+        self.poll_host()
         self.store.rollup()
         self.exporter.current(self.source_name)
         self.exporter.ranges(force=True)

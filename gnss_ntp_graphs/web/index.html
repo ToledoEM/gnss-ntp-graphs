@@ -46,6 +46,7 @@
       <figure data-graph="freq"><figcaption>Frequency / wander (ppm)</figcaption><div class="plot" id="p-freq"></div></figure>
       <figure data-graph="root"><figcaption>Root delay / dispersion (<span class="unit"></span>)</figcaption><div class="plot" id="p-root"></div></figure>
       <figure data-graph="stratum"><figcaption>Stratum</figcaption><div class="plot" id="p-stratum"></div></figure>
+      <figure data-graph="temp" data-host><figcaption>CPU temperature (°C) / frequency (ppm)</figcaption><div class="plot" id="p-temp"></div></figure>
     </div>
   </section>
 
@@ -80,6 +81,8 @@
     <div class="grid">
       <figure data-graph="hist"><figcaption>Offset histogram (central 98%, <span class="unit"></span>)</figcaption><div class="plot" id="p-hist"></div></figure>
       <figure data-graph="adev"><figcaption>Allan deviation of offset</figcaption><div class="plot" id="p-adev"></div></figure>
+      <figure data-graph="temp-freq" data-host><figcaption>Frequency vs CPU temperature <span class="fit" id="fit-temp-freq"></span></figcaption><div class="plot" id="p-temp-freq"></div></figure>
+      <figure data-graph="temp-offset" data-host><figcaption>Offset vs CPU temperature <span class="fit" id="fit-temp-offset"></span></figcaption><div class="plot" id="p-temp-offset"></div></figure>
     </div>
     <div class="table-wrap"><table id="stats-table"></table></div>
     <div class="table-wrap"><table id="peer-stats-table"></table></div>

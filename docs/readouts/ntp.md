@@ -78,3 +78,14 @@ Flat, low jitter means a clean PPS signal. A jump in jitter with a steady offset
 The server's distance from the reference. Stratum 1 means it takes time directly from the receiver. Stratum 2 or higher means it has fallen back to a network server, which usually lines up with a GNSS outage on the [GNSS tab](gnss.md).
 
 When the daemon reports stratum 0 or 16 it is not synchronised, and its other values are placeholders (chrony reports a root delay of 1 s, for example). The collector keeps those readings out of every NTP graph, so they appear as a gap, while the status line still shows the current state.
+
+## CPU temperature
+
+CPU temperature (°C, left axis) of the machine the collector runs on, drawn against the frequency correction (ppm, right axis). On a Raspberry Pi it comes from `vcgencmd measure_temp`; other Linux hosts use `/sys/class/thermal/thermal_zone0/temp`. Hosts with neither, such as a Mac or most Docker setups, record nothing and the graph stays hidden. Turn it off with `[source] host_temp = false`.
+
+The crystal that sets the system clock sits next to the CPU, so its frequency follows CPU temperature. When the two lines rise and fall together, the frequency correction is thermal drift. A load spike, a fan switching on or sunlight on the case shows in both. The [Stats tab](stats.md#frequency-and-offset-vs-cpu-temperature) puts a number on the relationship.
+
+| | |
+|---|---|
+| Unit | °C and ppm |
+| Source | `vcgencmd measure_temp`, else the kernel thermal zone |

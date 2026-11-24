@@ -48,6 +48,9 @@ GRAPH_IDS = [
     "sky",
     "hist",
     "adev",
+    "temp",
+    "temp-freq",
+    "temp-offset",
 ]
 
 DEFAULTS: dict[str, Any] = {
@@ -58,10 +61,12 @@ DEFAULTS: dict[str, Any] = {
         "gpsd_host": "127.0.0.1",
         "gpsd_port": 2947,
         "timeout": 10.0,
+        "host_temp": True,  # CPU temperature of the collector's host
     },
     "intervals": {  # seconds
         "ntp": 60,
         "gps": 15,
+        "host": 60,
         "export": 60,
         "rollup": 300,
         "stats": 900,

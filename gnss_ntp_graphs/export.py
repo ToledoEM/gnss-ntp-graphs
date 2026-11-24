@@ -20,7 +20,7 @@ from typing import Any
 
 from . import __version__, config, logs, stats
 from .sources.base import CONSTELLATIONS, DOPS
-from .store import GPS_NUM, Store
+from .store import GPS_NUM, HOST_NUM, Store
 
 log = logging.getLogger(__name__)
 
@@ -45,6 +45,8 @@ SYSTEM_COLS = [
 ]
 PEER_COLS = ["offset", "delay", "jitter", "reach"]
 STATS_WINDOWS = [("24h", 86400), ("7d", 7 * 86400)]
+# Bucket for pairing CPU temperature with frequency and offset, per stats window
+THERMAL_STEP = {"24h": 300, "7d": 1800}
 
 WEB_DIR = Path(__file__).resolve().parent / "web"
 
@@ -94,6 +96,7 @@ class Exporter:
                 "system": self.store.get_meta("system_latest"),
                 "peers": self.store.get_meta("peers_latest", []),
                 "gps": self.store.get_meta("gps_latest"),
+                "host": self.store.get_meta("host_latest"),
             },
         )
 
@@ -139,6 +142,7 @@ class Exporter:
                         "system", SYSTEM_COLS, start, ntp_end, ntp_step, now=now
                     ),
                     "gps": self.store.series("gps", GPS_NUM, start, end, step, now=now),
+                    "host": self.store.series("host", HOST_NUM, start, ntp_end, ntp_step, now=now),
                     "peers": {r: peers[r] for r in sorted(ranked)},
                 },
             )
@@ -154,6 +158,26 @@ class Exporter:
         sys_rows = self.store.raw("system", ["offset", "frequency"], start)
         return [(r[0], r[1]) for r in sys_rows], [(r[0], r[2]) for r in sys_rows], "polled"
 
+    def _thermal(self, start: int, now: int, step: int) -> dict[str, Any] | None:
+        """CPU temperature paired with frequency and offset on one bucket grid."""
+        end = (now // step + 1) * step
+        host = self.store.series("host", HOST_NUM, start, end, step, now=now)
+        if not any(v is not None for v in host["cpu_temp"]):
+            return None
+        sys = self.store.series("system", ["frequency", "offset"], start, end, step, now=now)
+        keep = [i for i, v in enumerate(host["cpu_temp"]) if v is not None]
+        temp = [host["cpu_temp"][i] for i in keep]
+        freq = [sys["frequency"][i] for i in keep]
+        off = [sys["offset"][i] for i in keep]
+        return {
+            "step": step,
+            "temp": temp,
+            "frequency": freq,
+            "offset": off,
+            "fit_frequency": stats.linfit(temp, freq),
+            "fit_offset": stats.linfit(temp, off),
+        }
+
     def stats(self, now: int | None = None) -> None:
         now = int(now if now is not None else time.time())
         out: dict[str, Any] = {"generated": now, "windows": {}}
@@ -162,6 +186,7 @@ class Exporter:
             off, freq, origin = self._offset_series(start)
             sys_rows = self.store.raw("system", ["sys_jitter", "rootdelay", "rootdisp"], start)
             gps_rows = self.store.raw("gps", ["used", "avg_ss", "tdop", "hdop"], start)
+            host_rows = self.store.raw("host", HOST_NUM, start)
             off_vals = [v for _, v in off]
             # Regular grid for ADEV: median sample spacing, at least 1 s
             gaps = [b[0] - a[0] for a, b in zip(off, off[1:], strict=False) if b[0] > a[0]]
@@ -177,6 +202,8 @@ class Exporter:
                 "rootdelay": stats.summary([r[2] for r in sys_rows]),
                 "rootdisp": stats.summary([r[3] for r in sys_rows]),
                 "adev": stats.allan_deviation(grid, tau0),
+                "cpu_temp": stats.summary([r[1] for r in host_rows]),
+                "thermal": self._thermal(start, now, THERMAL_STEP[name]),
                 "gps": {
                     "used": stats.summary([g[1] for g in gps_rows]),
                     "avg_ss": stats.summary([g[2] for g in gps_rows]),

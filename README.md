@@ -59,7 +59,7 @@ y_min = -0.05
 y_max = 0.05
 ```
 
-`[intervals] export` is the equivalent of `DRAW_INTERVAL`. graphs1090's settings for disk, network, temperature, scatter and airspy graphs have no equivalent, because this tool does not graph the host system.
+`[intervals] export` is the equivalent of `DRAW_INTERVAL`. graphs1090's settings for disk, network and airspy graphs have no equivalent. CPU temperature is recorded on hosts that report it (`vcgencmd` on a Raspberry Pi) and graphed against the frequency correction, with temperature scatter plots on the Stats tab.
 
 ## Docker (bridge source)
 

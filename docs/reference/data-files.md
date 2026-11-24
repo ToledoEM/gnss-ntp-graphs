@@ -37,11 +37,12 @@ Written every `[intervals] export` seconds. The status line, the peer table and 
           "visible_by": {"gps": 6, "galileo": 3, "glonass": 3, "beidou": 2, "qzss": 1, "sbas": 1, "navic": 0},
           "used_by": {"gps": 5, "galileo": 2, "glonass": 3, "beidou": 2, "qzss": 0, "sbas": 1, "navic": 0},
           "dops": {"hdop": 0.67, "vdop": 0.91, "pdop": 1.08, "gdop": 1.25, "tdop": 0.58},
-          "satellites": [{"PRN": 1, "gnssid": 0, "svid": 1, "el": 83.4, "az": 274.3, "ss": 50.8, "used": true}]}
+          "satellites": [{"PRN": 1, "gnssid": 0, "svid": 1, "el": 83.4, "az": 274.3, "ss": 50.8, "used": true}]},
+  "host": {"ts": 1795535340, "cpu_temp": 48.3}
 }
 ```
 
-`generated` is a Unix timestamp. `reach` is the decimal value of the reach register (255 is octal 377). `system`, `peers` and `gps` are the latest readings, even when the system reading is unsynchronised and therefore missing from the graphs.
+`generated` is a Unix timestamp. `reach` is the decimal value of the reach register (255 is octal 377). `system`, `peers`, `gps` and `host` are the latest readings (`host` is `null` when no CPU temperature is recorded), even when the system reading is unsynchronised and therefore missing from the graphs.
 
 ## range_&lt;name&gt;.json
 
@@ -52,6 +53,7 @@ One file per entry in `[web] ranges`: `range_2h.json`, `range_8h.json`, `range_2
   "name": "24h", "start": 1795874414, "end": 1795960980, "step": 180, "generated": 1795960814,
   "system": {"t": [1795874400, 1795874580], "offset": [0.0012, null], "sys_jitter": [], "...": []},
   "gps": {"t": [], "total": [], "used": [], "avg_ss": [], "vis_gps": [], "used_gps": [], "hdop": [], "...": []},
+  "host": {"t": [1795874400, 1795874580], "cpu_temp": [48.1, 48.3]},
   "peers": {"PPS(0)": {"t": [], "offset": [], "delay": [], "jitter": [], "reach": []}}
 }
 ```
@@ -62,6 +64,7 @@ Every array lines up with its `t` array, one value per bucket of `step` seconds.
 |---|---|
 | `system` | `offset`, `sys_jitter`, `clk_jitter`, `frequency`, `wander`, `rootdelay`, `rootdisp`, `stratum` |
 | `gps` | `total`, `used`, `avg_ss`, `vis_<constellation>`, `used_<constellation>`, `hdop`, `vdop`, `pdop`, `gdop`, `tdop` |
+| `host` | `cpu_temp` (°C), on the same buckets as `system` |
 | `peers.<remote>` | `offset`, `delay`, `jitter`, `reach` |
 
 `peers` holds at most `max_peers` entries and leaves out `hide_peers`.
@@ -82,6 +85,10 @@ Written every `[intervals] stats` seconds.
       "offset_hist": {"x": [], "count": [], "width": 0.0005},
       "frequency": {}, "sys_jitter": {}, "rootdelay": {}, "rootdisp": {},
       "adev": {"tau": [60, 120], "adev": [3.1e-8, 2.2e-8]},
+      "cpu_temp": {},
+      "thermal": {"step": 300, "temp": [48.1], "frequency": [-4.31], "offset": [0.0002],
+                  "fit_frequency": {"slope": 0.021, "intercept": -5.32, "r": 0.93, "n": 288},
+                  "fit_offset": {"slope": 0.0001, "intercept": -0.004, "r": 0.12, "n": 288}},
       "gps": {"used": {}, "avg_ss": {}, "tdop": {}, "hdop": {}},
       "peers": {"192.168.1.10": {"offset": {}, "delay": {}, "jitter": {}, "reach_full_pct": 93.9}}
     },
@@ -91,3 +98,5 @@ Written every `[intervals] stats` seconds.
 ```
 
 `origin` is `polled`, `chrony_tracking` or `ntpd_loopstats`. `tau0` is the sample spacing in seconds. `adev.tau` is in seconds and `adev.adev` is a dimensionless fraction. Each summary object has the same keys as `offset`. A summary is `null` when the window has no samples.
+
+`thermal` pairs the CPU temperature with the average frequency (ppm) and offset (ms) per bucket of `step` seconds (300 for 24h, 1800 for 7d). The three arrays line up. `fit_*` is the least-squares line `y = slope * temp + intercept` with Pearson `r` and pair count `n`, or `null` with fewer than 3 pairs. `thermal` is `null` when the window has no temperature readings.

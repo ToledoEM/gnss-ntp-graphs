@@ -29,10 +29,10 @@ Graph ids for `hide_graphs` and `[graphs.<id>]`:
 
 | Section | Ids |
 |---|---|
-| NTP | `offset`, `jitter`, `freq`, `root`, `stratum` |
+| NTP | `offset`, `jitter`, `freq`, `root`, `stratum`, `temp` |
 | Peers | `peer-offset`, `peer-delay`, `peer-jitter`, `peer-reach` |
 | GNSS | `sats`, `const`, `ss`, `dop`, `sky` |
-| Stats | `hist`, `adev` |
+| Stats | `hist`, `adev`, `temp-freq`, `temp-offset` |
 
 ## Time and units
 
