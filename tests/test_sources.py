@@ -115,3 +115,15 @@ def test_unsynced_system_not_in_series(tmp_path):
     st.add_system(base.SystemSample(ts=1, stratum=0, rootdelay=1000.0, leap="Not synchronised"))
     assert st.db.execute("SELECT COUNT(*) FROM system").fetchone()[0] == 0
     assert st.get_meta("system_latest")["leap"] == "Not synchronised"
+
+
+def test_vcgencmd_temp():
+    assert local.vcgencmd_temp(read("vcgencmd_measure_temp.txt")) == 48.3
+    assert local.vcgencmd_temp("temp=-2'C") == -2.0
+    assert local.vcgencmd_temp("error=1") is None
+    assert local.vcgencmd_temp(None) is None
+
+
+def test_thermal_zone_temp():
+    assert local.thermal_zone_temp("51540\n") == 51.54
+    assert local.thermal_zone_temp("") is None

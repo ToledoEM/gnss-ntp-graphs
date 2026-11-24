@@ -15,7 +15,7 @@ from collections.abc import Iterable, Sequence
 from dataclasses import asdict
 from typing import Any
 
-from .sources.base import CONSTELLATIONS, DOPS, GpsSample, PeerSample, SystemSample
+from .sources.base import CONSTELLATIONS, DOPS, GpsSample, HostSample, PeerSample, SystemSample
 
 SYSTEM_NUM = [
     "offset",
@@ -36,12 +36,14 @@ GPS_NUM = (
     + [f"used_{c}" for c in CONSTELLATIONS]
     + DOPS
 )
+HOST_NUM = ["cpu_temp"]
 
 TABLES = {
     # name: (key columns beyond ts, numeric columns, text columns)
     "system": ([], SYSTEM_NUM, SYSTEM_TXT),
     "peers": (["remote"], PEER_NUM, PEER_TXT),
     "gps": ([], GPS_NUM, []),
+    "host": ([], HOST_NUM, []),
 }
 TIERS = [("", 0), ("_5m", 300), ("_1h", 3600)]
 
@@ -113,6 +115,11 @@ class Store:
             row[d] = g.dops.get(d)
         self._insert("gps", [row])
         self.set_meta("gps_latest", asdict(g))
+        self.db.commit()
+
+    def add_host(self, h: HostSample) -> None:
+        self._insert("host", [asdict(h)])
+        self.set_meta("host_latest", asdict(h))
         self.db.commit()
 
     # --- maintenance --------------------------------------------------------

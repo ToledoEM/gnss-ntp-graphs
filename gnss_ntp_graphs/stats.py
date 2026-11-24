@@ -78,6 +78,41 @@ def regularise(samples: Sequence[tuple[int, float | None]], tau0: int) -> list[f
     return grid
 
 
+def _pairs(x: Sequence[float | None], y: Sequence[float | None]) -> list[tuple[float, float]]:
+    return [(a, b) for a, b in zip(x, y, strict=False) if a is not None and b is not None]
+
+
+def pearson(x: Sequence[float | None], y: Sequence[float | None]) -> float | None:
+    """Pearson correlation of the pairs where both values are present."""
+    fit = linfit(x, y)
+    return None if fit is None else fit["r"]
+
+
+def linfit(x: Sequence[float | None], y: Sequence[float | None]) -> dict[str, float] | None:
+    """Least-squares line y = slope * x + intercept, with Pearson r and n.
+
+    None when fewer than 3 pairs or either variable is constant.
+    """
+    pts = _pairs(x, y)
+    n = len(pts)
+    if n < 3:
+        return None
+    mx = sum(a for a, _ in pts) / n
+    my = sum(b for _, b in pts) / n
+    sxx = sum((a - mx) ** 2 for a, _ in pts)
+    syy = sum((b - my) ** 2 for _, b in pts)
+    sxy = sum((a - mx) * (b - my) for a, b in pts)
+    if sxx == 0 or syy == 0:
+        return None
+    slope = sxy / sxx
+    return {
+        "slope": round(slope, 9),
+        "intercept": round(my - slope * mx, 9),
+        "r": round(sxy / math.sqrt(sxx * syy), 6),
+        "n": n,
+    }
+
+
 def allan_deviation(
     x: Sequence[float | None], tau0: float, max_points: int = 30
 ) -> dict[str, list[float]]:

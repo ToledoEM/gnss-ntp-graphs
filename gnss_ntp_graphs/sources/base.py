@@ -81,6 +81,12 @@ class GpsSample:
     satellites: list[dict[str, Any]] = field(default_factory=list)
 
 
+@dataclass
+class HostSample:
+    ts: int
+    cpu_temp: float | None = None  # °C
+
+
 def system_from_crv(ts: int, crv: dict[str, Any]) -> SystemSample | None:
     """Build a SystemSample from the ntpq_crv.json shape (bridge or local)."""
     if not isinstance(crv, dict) or "error" in crv:

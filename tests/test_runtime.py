@@ -295,3 +295,32 @@ def test_cli_version(capsys):
         cli.main(["--version"])
     assert e.value.code == 0
     assert __version__ in capsys.readouterr().out
+
+
+def test_host_temp_vcgencmd(monkeypatch, tmp_path):
+    monkeypatch.setattr(local.shutil, "which", lambda name: "/usr/bin/" + name)
+    monkeypatch.setattr(local, "_run", lambda cmd, timeout: "temp=47.2'C\n")
+    h = local.HostTemp(zone=tmp_path / "none").read()
+    assert h is not None and h.cpu_temp == 47.2
+
+
+def test_host_temp_thermal_zone_and_missing(monkeypatch, tmp_path):
+    monkeypatch.setattr(local.shutil, "which", lambda name: None)
+    zone = tmp_path / "temp"
+    zone.write_text("45000\n")
+    assert local.HostTemp(zone=zone).read().cpu_temp == 45.0
+    ht = local.HostTemp(zone=tmp_path / "none")
+    assert ht.read() is None and ht.missing_logged
+
+
+def test_collector_poll_host(tmp_path, monkeypatch):
+    cfg = tmp_cfg(tmp_path)
+    c = Collector(cfg)
+    monkeypatch.setattr(c.host, "read", lambda: base.HostSample(ts=5, cpu_temp=50.0))
+    c.poll_host()
+    assert c.store.get_meta("host_latest") == {"ts": 5, "cpu_temp": 50.0}
+    cfg = tmp_cfg(tmp_path / "off", host_temp=False)
+    (tmp_path / "off").mkdir()
+    off = Collector(cfg)
+    assert off.host is None
+    off.poll_host()

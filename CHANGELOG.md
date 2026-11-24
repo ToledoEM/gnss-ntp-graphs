@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- CPU temperature of the collector's host, read with `vcgencmd measure_temp` or the kernel thermal zone, with either source type. New NTP graph of temperature against frequency, Stats scatter plots of frequency and offset against temperature with fit slope and correlation, a CPU temp row in the Stats table and in the status line. New keys `[source] host_temp` and `[intervals] host`; graph ids `temp`, `temp-freq`, `temp-offset`. Hosts without a temperature reading hide these graphs.
 - Fixed blank NTP and peer graphs on the 2h range. Their buckets are now never shorter than `[intervals] ntp`, so a 60 s poll no longer leaves every other 30 s bucket empty.
 - Sky plot legend: colour key per constellation in view with used/visible counts, a filled/ring key, and a "used N of M satellites" line.
 - New `[web] cursor` option. `hover` (default) keeps the current behaviour; `last` marks the newest point with a dashed line and shows its values under each graph until the pointer moves over the plot.

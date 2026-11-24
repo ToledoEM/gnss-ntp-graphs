@@ -38,6 +38,20 @@ The collector computes the overlapping Allan deviation from the offset samples, 
 
 Read it from left to right. The curve normally falls as tau grows, because averaging cancels short-term noise. Where it flattens or turns upward, a slower effect such as temperature drift takes over. With polled samples the curve starts at 60 s, so a [daemon log](../configuration/daemon-logs.md) with finer spacing shows more of the short-term end.
 
+## Frequency and offset vs CPU temperature
+
+One point per bucket (5 minutes in the 24h window, 30 minutes in 7d) with the CPU temperature on the x axis and the average frequency correction or offset on the y axis. The dashed line is the least-squares fit. The caption gives:
+
+| | |
+|---|---|
+| slope | Change per °C: ppm/°C for frequency, ms/°C (or µs/°C) for offset |
+| r | Pearson correlation, from -1 to 1 |
+| n | Number of buckets with both values |
+
+For frequency, an r close to 1 or -1 means temperature explains most of the correction, and the slope is the crystal's temperature coefficient at this operating point. Typical crystals sit around 0.1 to 1 ppm/°C. An r near 0 means something else drives the frequency, or the temperature hardly moved in the window. Offset is normally centred on zero whatever the temperature, because the daemon steers it there. A clear slope in the offset plot means the daemon lags behind fast temperature changes; a longer poll interval or a steadier case temperature helps.
+
+Both graphs are hidden on hosts that record no CPU temperature.
+
 ## System and GNSS table
 
 ![System and GNSS statistics table](../assets/screenshots/table-stats.png)
@@ -61,6 +75,7 @@ Rows:
 | sys jitter | System jitter |
 | frequency ppm | Frequency correction (from the daemon log if configured) |
 | root delay, root disp | Root delay and dispersion |
+| CPU temp °C | CPU temperature of the collector's host |
 | sats used | Satellites in use |
 | avg SNR dB-Hz | Average signal of satellites in use |
 | TDOP, HDOP | Time and horizontal dilution of precision |

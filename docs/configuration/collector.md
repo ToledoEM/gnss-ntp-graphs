@@ -12,6 +12,7 @@ ntp = "auto"
 gpsd_host = "127.0.0.1"
 gpsd_port = 2947
 timeout = 10.0
+host_temp = true
 ```
 
 | Key | Values | Meaning |
@@ -21,6 +22,7 @@ timeout = 10.0
 | `ntp` | `auto`, `chrony`, `ntpd` | `local` only. `auto` uses chrony when `chronyc -n -c tracking` answers, otherwise ntpd |
 | `gpsd_host`, `gpsd_port` | host, port | `local` only. Where gpsd listens |
 | `timeout` | seconds | Limit for each HTTP request, command or gpsd read |
+| `host_temp` | `true`, `false` | Record the CPU temperature of the machine the collector runs on, with either source type. Reads `vcgencmd measure_temp`, else `/sys/class/thermal/thermal_zone0/temp`. Hosts with neither skip it |
 
 With `local` and chrony, each NTP poll runs `chronyc -n -c tracking`, `-c sources`, `-c sourcestats` and `chronyc -n ntpdata`. With ntpd it runs `ntpq -c rv` and `ntpq -pn`. Each GPS poll connects to gpsd, sends `?WATCH`, waits for the first `SKY` report that lists satellites and disconnects.
 
@@ -30,6 +32,7 @@ With `local` and chrony, each NTP poll runs `chronyc -n -c tracking`, `-c source
 [intervals]
 ntp = 60
 gps = 15
+host = 60
 export = 60
 rollup = 300
 stats = 900
@@ -41,6 +44,7 @@ All values are in seconds.
 |---|---|
 | `ntp` | Poll the system and peer readings |
 | `gps` | Poll the satellite view and DOP |
+| `host` | Read the CPU temperature |
 | `export` | Write `current.json` and the `range_*.json` files (graphs1090 `DRAW_INTERVAL`) |
 | `rollup` | Average raw samples into the 5-minute and hourly tiers, and prune old rows |
 | `stats` | Recompute `stats.json` for the Stats tab |

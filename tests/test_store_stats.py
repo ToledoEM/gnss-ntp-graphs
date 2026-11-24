@@ -5,7 +5,7 @@ from pathlib import Path
 
 from gnss_ntp_graphs import config, logs, stats
 from gnss_ntp_graphs.export import Exporter, install_web
-from gnss_ntp_graphs.sources.base import PeerSample, SystemSample, gps_from_sky
+from gnss_ntp_graphs.sources.base import HostSample, PeerSample, SystemSample, gps_from_sky
 from gnss_ntp_graphs.store import Store
 
 FIX = Path(__file__).parent / "fixtures"
@@ -139,3 +139,45 @@ def test_short_range_ntp_bucket_not_finer_than_poll(tmp_path):
     assert sys_t[1] - sys_t[0] == 60 and gps_t[1] - gps_t[0] == 30
     assert all(v is not None for v in r["system"]["offset"][-10:-1])
     assert all(v is not None for v in r["peers"]["GPS"]["offset"][-10:-1])
+
+
+def test_linfit_and_pearson():
+    fit = stats.linfit([20, 30, 40, None], [1.0, 2.0, 3.0, 9.0])
+    assert fit == {"slope": 0.1, "intercept": -1.0, "r": 1.0, "n": 3}
+    assert stats.pearson([1, 2, 3], [3, 2, 1]) == -1.0
+    assert stats.linfit([1, 1, 1], [1, 2, 3]) is None
+    assert stats.linfit([1, 2], [1, 2]) is None
+
+
+def test_export_thermal(tmp_path):
+    st = filled_store(tmp_path)
+    for i in range(1440):
+        ts = NOW - 86400 + i * 60
+        temp = 45.0 + 5 * math.sin(i / 200)
+        st._insert("host", [{"ts": ts, "cpu_temp": temp}])
+        st.db.execute(
+            "UPDATE system SET frequency = ? WHERE ts = ?", (-4.3 + 0.02 * (temp - 45), ts)
+        )
+    st.add_host(HostSample(ts=NOW, cpu_temp=46.0))
+    www = tmp_path / "www"
+    ex = Exporter(st, str(www), config.load())
+    ex.current("local", now=NOW)
+    ex.ranges(now=NOW, force=True)
+    ex.stats(now=NOW)
+    cur = json.loads((www / "data" / "current.json").read_text())
+    assert cur["host"]["cpu_temp"] == 46.0
+    r = json.loads((www / "data" / "range_24h.json").read_text())
+    assert r["host"]["t"] == r["system"]["t"]
+    w = json.loads((www / "data" / "stats.json").read_text())["windows"]["24h"]
+    th = w["thermal"]
+    assert th["step"] == 300 and len(th["temp"]) == len(th["frequency"]) == len(th["offset"])
+    assert abs(th["fit_frequency"]["slope"] - 0.02) < 1e-3 and th["fit_frequency"]["r"] > 0.99
+    assert w["cpu_temp"]["n"] >= 1440
+
+
+def test_export_thermal_absent(tmp_path):
+    st = filled_store(tmp_path)
+    ex = Exporter(st, str(tmp_path / "www"), config.load())
+    ex.stats(now=NOW)
+    w = json.loads((tmp_path / "www" / "data" / "stats.json").read_text())["windows"]["24h"]
+    assert w["thermal"] is None and w["cpu_temp"] is None

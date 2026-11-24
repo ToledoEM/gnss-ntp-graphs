@@ -14,11 +14,16 @@ ntp = "auto"
 gpsd_host = "127.0.0.1"
 gpsd_port = 2947
 timeout = 10.0
+# CPU temperature of the machine the collector runs on: vcgencmd measure_temp
+# (Raspberry Pi), else /sys/class/thermal/thermal_zone0/temp. Hosts with
+# neither skip it and the temperature graphs stay hidden.
+host_temp = true
 
 [intervals]
 # Seconds. The bridge refreshes NTP every 60 s and GPS every 15 s.
 ntp = 60
 gps = 15
+host = 60
 # How often the graph data is written (graphs1090 DRAW_INTERVAL). Ranges
 # longer than 2h refresh once per bucket, so long ones cost little.
 export = 60
@@ -76,7 +81,8 @@ cursor = "hover"
 # Sections shown, in this order: "ntp", "peers", "gps", "stats"
 sections = ["ntp", "peers", "gps", "stats"]
 # Graphs to hide. Ids: offset jitter freq root stratum peer-offset
-# peer-delay peer-jitter peer-reach sats const ss dop sky hist adev
+# peer-delay peer-jitter peer-reach sats const ss dop sky hist adev temp
+# temp-freq temp-offset
 hide_graphs = []
 # Range buttons, from "2h", "8h", "24h", "7d", "30d", "1y"
 ranges = ["2h", "8h", "24h", "7d", "30d", "1y"]
