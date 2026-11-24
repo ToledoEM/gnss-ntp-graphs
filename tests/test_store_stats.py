@@ -128,3 +128,14 @@ def test_export_writes_site(tmp_path):
     w = s["windows"]["24h"]
     assert w["origin"] == "polled" and w["tau0"] == 60 and w["adev"]["tau"][0] == 60
     assert w["peers"]["GPS"]["reach_full_pct"] == 100.0
+
+
+def test_short_range_ntp_bucket_not_finer_than_poll(tmp_path):
+    st = filled_store(tmp_path)
+    ex = Exporter(st, str(tmp_path / "www"), config.load())
+    ex.ranges(now=NOW, force=True)
+    r = json.loads((tmp_path / "www" / "data" / "range_2h.json").read_text())
+    sys_t, gps_t = r["system"]["t"], r["gps"]["t"]
+    assert sys_t[1] - sys_t[0] == 60 and gps_t[1] - gps_t[0] == 30
+    assert all(v is not None for v in r["system"]["offset"][-10:-1])
+    assert all(v is not None for v in r["peers"]["GPS"]["offset"][-10:-1])
