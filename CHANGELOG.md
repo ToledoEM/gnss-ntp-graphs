@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Fixed blank NTP and peer graphs on the 2h range. Their buckets are now never shorter than `[intervals] ntp`, so a 60 s poll no longer leaves every other 30 s bucket empty.
 - Sky plot legend: colour key per constellation in view with used/visible counts, a filled/ring key, and a "used N of M satellites" line.
 - New `[web] cursor` option. `hover` (default) keeps the current behaviour; `last` marks the newest point with a dashed line and shows its values under each graph until the pointer moves over the plot.
 - Single-page layout keeps the whole header, status line included, on top while scrolling, and the section buttons land below it.
