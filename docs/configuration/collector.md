@@ -18,11 +18,11 @@ host_temp = true
 | Key | Values | Meaning |
 |---|---|---|
 | `type` | `bridge`, `local` | Read GPSNTPHomeBridge's JSON over HTTP, or read the daemons on this machine. See [Choosing a source](../install/index.md#choosing-a-source) |
-| `bridge_url` | URL | Base URL of the bridge's web root. The collector appends `ntpq_crv.json`, `ntpq_pn.json` and `gps.json` |
+| `bridge_url` | URL | Base URL of the bridge's web root. The collector appends `ntpq_crv.json`, `ntpq_pn.json`, `gps.json` and, if present, `cpu_temp.json` |
 | `ntp` | `auto`, `chrony`, `ntpd` | `local` only. `auto` uses chrony when `chronyc -n -c tracking` answers, otherwise ntpd |
 | `gpsd_host`, `gpsd_port` | host, port | `local` only. Where gpsd listens |
 | `timeout` | seconds | Limit for each HTTP request, command or gpsd read |
-| `host_temp` | `true`, `false` | Record the CPU temperature of the machine the collector runs on, with either source type. Reads `vcgencmd measure_temp`, else `/sys/class/thermal/thermal_zone0/temp`. Hosts with neither skip it |
+| `host_temp` | `true`, `false` | Record the CPU temperature of the machine the collector runs on, with either source type. With `bridge`, the bridge's `cpu_temp.json` comes first. Otherwise reads `vcgencmd measure_temp`, else `/sys/class/thermal/thermal_zone0/temp`. Hosts with neither skip it. See [CPU temperature](../install/raspberry-pi.md#cpu-temperature) |
 
 With `local` and chrony, each NTP poll runs `chronyc -n -c tracking`, `-c sources`, `-c sourcestats` and `chronyc -n ntpdata`. With ntpd it runs `ntpq -c rv` and `ntpq -pn`. Each GPS poll connects to gpsd, sends `?WATCH`, waits for the first `SKY` report that lists satellites and disconnects.
 
@@ -105,7 +105,7 @@ The backup is a single self-contained file, with no `-wal` or `-shm` files to co
 
 1. Stop the collector: `sudo systemctl stop gnss-ntp-graphs`, or `docker compose stop`.
 2. Replace `samples.db` with the backup and delete any `samples.db-wal` and `samples.db-shm` next to it.
-3. Make sure the collector's user owns the file: `sudo chown gnssgraphs: /var/lib/gnss-ntp-graphs/samples.db`. In Docker the user is UID 10001.
+3. Set the file's owner to the collector's user: `sudo chown gnssgraphs: /var/lib/gnss-ntp-graphs/samples.db`. In Docker the user is UID 10001.
 4. Start the collector again.
 
 ## retention

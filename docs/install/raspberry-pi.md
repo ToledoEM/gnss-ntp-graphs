@@ -50,6 +50,55 @@ sudo systemctl restart gnss-ntp-graphs     # after editing config.toml
 journalctl -u gnss-ntp-graphs -f           # follow the log
 ```
 
+## CPU temperature
+
+The collector records the CPU temperature every `[intervals] host` seconds (60 by default) and graphs it against the frequency correction. Set `[source] host_temp = false` to turn it off.
+
+Where the reading comes from depends on where the collector runs.
+
+| Collector runs on | Temperature of | Read from |
+|---|---|---|
+| The GPS Pi (`local` or `bridge`) | The GPS Pi | `/sys/class/thermal/thermal_zone0/temp` under the service, `vcgencmd measure_temp` when run by hand |
+| Another machine or Docker (`bridge`) | The GPS Pi, if the bridge publishes `cpu_temp.json` | `<bridge_url>/cpu_temp.json` |
+| Another machine, bridge without `cpu_temp.json` | That machine, if it has a sensor | Its own thermal zone |
+
+The service runs with `PrivateDevices=yes`, which hides `/dev/vchiq`, so `vcgencmd` cannot run inside it. The kernel thermal zone is the same sensor and stays readable. Check both by hand on the Pi:
+
+```bash
+vcgencmd measure_temp                          # temp=48.3'C
+cat /sys/class/thermal/thermal_zone0/temp      # 48312 (millidegrees)
+```
+
+### Publishing the temperature from the bridge
+
+GPSNTPHomeBridge does not publish a temperature file itself. To get the GPS Pi's temperature into a collector on another machine, add a timer on the Pi that writes `cpu_temp.json` into the bridge's web root (`/var/www/html` by default):
+
+```json
+{"timestamp": 1795535340, "cpu_temp": 48.3}
+```
+
+`timestamp` is Unix seconds or an ISO 8601 string. The collector ignores a file older than 5 minutes, so a stopped timer shows as a gap rather than a flat line.
+
+`/usr/local/bin/cpu-temp-json`:
+
+```bash
+#!/bin/sh
+# Write the CPU temperature as cpu_temp.json for gnss-ntp-graphs
+out=/var/www/html/cpu_temp.json
+milli=$(cat /sys/class/thermal/thermal_zone0/temp) || exit 1
+printf '{"timestamp": %s, "cpu_temp": %s.%03d}\n' "$(date +%s)" "$((milli / 1000))" "$((milli % 1000))" > "$out.tmp"
+mv "$out.tmp" "$out"
+```
+
+Make it executable and run it every minute from root's crontab:
+
+```bash
+sudo chmod 755 /usr/local/bin/cpu-temp-json
+(sudo crontab -l 2>/dev/null; echo '* * * * * /usr/local/bin/cpu-temp-json') | sudo crontab -
+```
+
+Check it with `curl http://<bridge>/cpu_temp.json`. The collector picks the file up on its next poll; no restart is needed.
+
 ## Uninstall
 
 ```bash

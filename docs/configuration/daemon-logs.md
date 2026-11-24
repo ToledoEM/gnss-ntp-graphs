@@ -49,10 +49,10 @@ flowchart TD
     n -- no --> p[use polled samples]
 ```
 
-- Rotated files next to the live one are read too: `tracking.log.1`, `loopstats.20261124` and so on. Compressed files (`.gz`, `.xz`, `.bz2`) are skipped.
+- The collector also reads rotated files next to the live one: `tracking.log.1`, `loopstats.20261124` and so on. It skips compressed files (`.gz`, `.xz`, `.bz2`).
 - The sample spacing for the Allan deviation is the median gap between log rows. The Stats tab shows it as "sample spacing" next to the source name.
 - chrony logs offset as local clock minus reference. The collector flips the sign so it matches `ntpq` and the rest of the page.
-- The file needs to be readable by the `gnssgraphs` user.
+- The `gnssgraphs` user needs read access to the file.
 - Only the offset and frequency figures come from the log. Jitter, root delay, root dispersion, GNSS and peer statistics still come from polled samples.
 
 The line under the Stats window buttons says which source is in use, for example `offset source: chrony tracking.log, sample spacing 16s`.

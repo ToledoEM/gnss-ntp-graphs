@@ -324,3 +324,14 @@ def test_collector_poll_host(tmp_path, monkeypatch):
     off = Collector(cfg)
     assert off.host is None
     off.poll_host()
+
+
+def test_collector_prefers_bridge_temperature(tmp_path, monkeypatch):
+    c = Collector(tmp_cfg(tmp_path))
+    monkeypatch.setattr(c.source, "host", lambda: base.HostSample(ts=7, cpu_temp=40.0))
+    monkeypatch.setattr(c.host, "read", lambda: base.HostSample(ts=8, cpu_temp=60.0))
+    c.poll_host()
+    assert c.store.get_meta("host_latest")["cpu_temp"] == 40.0
+    monkeypatch.setattr(c.source, "host", lambda: None)
+    c.poll_host()
+    assert c.store.get_meta("host_latest")["cpu_temp"] == 60.0

@@ -1,6 +1,6 @@
 # Data files
 
-The collector writes four kinds of JSON file to `www/data/`. They are plain files, so you can fetch them with `curl` or feed them into other tools. Each file is written to a temporary name first and renamed into place, so a reader never sees a half-written file.
+The collector writes four kinds of JSON file to `www/data/`. They are plain files, so you can fetch them with `curl` or feed them into other tools. The collector writes each file to a temporary name first and renames it into place, so a reader never sees a half-written file.
 
 Units match the rest of the page: offsets, jitter, delay and dispersion in ms, frequency and wander in ppm, signal in dB-Hz.
 

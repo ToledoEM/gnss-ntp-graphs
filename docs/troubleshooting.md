@@ -37,12 +37,12 @@ The 30-day and 1-year ranges read the rollup tiers, which fill up as the rollup 
 A gap means no sample in those buckets. Common causes:
 
 - The collector was stopped, or the host was down.
-- The daemon was unsynchronised (stratum 0 or 16). Those readings are kept out of the NTP graphs on purpose.
-- gpsd returned no satellites, or the bridge reported a GPS failure. No GPS sample is stored then.
+- The daemon was unsynchronised (stratum 0 or 16). The collector keeps those readings out of the NTP graphs on purpose.
+- gpsd returned no satellites, or the bridge reported a GPS failure. The collector stores no GPS sample then.
 
 ## "updated" turns amber or red
 
-The age of `current.json` is past `stale_warn_s` or `stale_bad_s`. Either the collector stopped writing (check the log) or the viewing device's clock is wrong. The age is worked out in the browser.
+The age of `current.json` is past `stale_warn_s` or `stale_bad_s`. Either the collector stopped writing (check the log) or the viewing device's clock is wrong. The browser works out the age.
 
 ## Offset is around ±1.6 s in Docker
 

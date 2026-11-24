@@ -110,10 +110,10 @@ When the page asks for a range, the store picks the finest tier whose retention 
 | 30d | 1 h | 5-minute | 720 |
 | 1y | 6 h | hourly | 1460 |
 
-Each range file is rewritten only after its bucket length has passed, so the 1-year file changes four times a day.
+The exporter rewrites each range file only after its bucket length has passed, so the 1-year file changes four times a day.
 
 The database runs in SQLite WAL mode. Each sample is written as one row per timestamp, and the peers tables have one row per peer and timestamp.
 
 ## The page
 
-`index.html` and `app.js` are static. On load the page reads `data/config.json`, then fetches `current.json` and the range file for the selected tab every 60 seconds. It only draws the visible section, so a hidden tab costs nothing. Requests add a cache-busting query string, and the web server sends `no-cache` for `data/`.
+`index.html` and `app.js` are static. On load the page reads `data/config.json`, then fetches `current.json` and the range file for the selected tab every 60 seconds. It draws only the visible section, so hidden tabs are not drawn. Requests add a cache-busting query string, and the web server sends `no-cache` for `data/`.

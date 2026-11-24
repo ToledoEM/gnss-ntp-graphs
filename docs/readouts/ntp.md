@@ -14,7 +14,7 @@ flowchart LR
     clk --> cl[NTP clients]
 ```
 
-The receiver's pulse-per-second (PPS) output marks the start of each second very precisely, and the NMEA sentences say which second it is. The daemon steers the system clock towards that reference. These graphs show how far off the clock is, how noisy the measurement is, and how hard the daemon has to steer.
+The receiver's pulse-per-second (PPS) output marks the start of each second precisely, and the NMEA sentences say which second it is. The daemon steers the system clock towards that reference. These graphs show how far off the clock is, how noisy the measurement is, and how hard the daemon has to steer.
 
 ## Offset
 
@@ -81,11 +81,11 @@ When the daemon reports stratum 0 or 16 it is not synchronised, and its other va
 
 ## CPU temperature
 
-CPU temperature (°C, left axis) of the machine the collector runs on, drawn against the frequency correction (ppm, right axis). On a Raspberry Pi it comes from `vcgencmd measure_temp`; other Linux hosts use `/sys/class/thermal/thermal_zone0/temp`. Hosts with neither, such as a Mac or most Docker setups, record nothing and the graph stays hidden. Turn it off with `[source] host_temp = false`.
+CPU temperature (°C, left axis) drawn against the frequency correction (ppm, right axis). With `bridge`, it comes from the bridge's `cpu_temp.json` when the bridge publishes one. Otherwise it is the temperature of the machine the collector runs on: `vcgencmd measure_temp` on a Raspberry Pi, `/sys/class/thermal/thermal_zone0/temp` on other Linux hosts. With no reading at all, the graph stays hidden. [CPU temperature](../install/raspberry-pi.md#cpu-temperature) explains each setup. Turn it off with `[source] host_temp = false`.
 
 The crystal that sets the system clock sits next to the CPU, so its frequency follows CPU temperature. When the two lines rise and fall together, the frequency correction is thermal drift. A load spike, a fan switching on or sunlight on the case shows in both. The [Stats tab](stats.md#frequency-and-offset-vs-cpu-temperature) puts a number on the relationship.
 
 | | |
 |---|---|
 | Unit | °C and ppm |
-| Source | `vcgencmd measure_temp`, else the kernel thermal zone |
+| Source | Bridge `cpu_temp.json`, else `vcgencmd measure_temp`, else the kernel thermal zone |

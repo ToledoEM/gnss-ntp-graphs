@@ -82,7 +82,7 @@ Rows:
 
 range90 and range98 are the most useful single numbers for comparing periods. Unlike the standard deviation, a handful of outliers barely moves them.
 
-GNSS rows have more samples than system rows because GPS is polled every 15 seconds instead of every 60.
+GNSS rows have more samples than system rows because the collector polls GPS every 15 seconds instead of every 60.
 
 ## Peers table
 
