@@ -110,12 +110,16 @@ class Exporter:
             self.last_range[name] = now
             start = now - span
             end = (now // step + 1) * step
+            # NTP is polled less often than GPS; a bucket finer than the poll
+            # interval leaves every other point empty and the line undrawn.
+            ntp_step = max(step, int(self.cfg["intervals"]["ntp"]))
+            ntp_end = (now // ntp_step + 1) * ntp_step
             peers = {}
             for remote in self.store.peer_names(start, now=now):
                 if remote in web["hide_peers"]:
                     continue
                 s = self.store.series(
-                    "peers", PEER_COLS, start, end, step, where=("remote", remote), now=now
+                    "peers", PEER_COLS, start, ntp_end, ntp_step, where=("remote", remote), now=now
                 )
                 if any(v is not None for v in s["offset"]):
                     peers[remote] = s
@@ -131,7 +135,9 @@ class Exporter:
                     "end": end,
                     "step": step,
                     "generated": now,
-                    "system": self.store.series("system", SYSTEM_COLS, start, end, step, now=now),
+                    "system": self.store.series(
+                        "system", SYSTEM_COLS, start, ntp_end, ntp_step, now=now
+                    ),
                     "gps": self.store.series("gps", GPS_NUM, start, end, step, now=now),
                     "peers": {r: peers[r] for r in sorted(ranked)},
                 },
