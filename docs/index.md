@@ -1,5 +1,7 @@
 # GNSS NTP Graphs
 
+<p align="center"><img src="assets/logo.png" alt="GNSS NTP Graphs logo" width="160"></p>
+
 GNSS NTP Graphs draws history graphs for a GPS-disciplined NTP server, in the style of [graphs1090](https://github.com/wiedehopf/graphs1090). A small Python collector polls chrony or ntpd and gpsd, stores the readings in SQLite and writes JSON files. A static page in the browser turns those files into graphs.
 
 ![NTP tab with offset, jitter, frequency, root delay and stratum graphs](assets/screenshots/page-ntp.png)
