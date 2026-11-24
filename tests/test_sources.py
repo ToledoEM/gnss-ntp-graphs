@@ -127,3 +127,29 @@ def test_vcgencmd_temp():
 def test_thermal_zone_temp():
     assert local.thermal_zone_temp("51540\n") == 51.54
     assert local.thermal_zone_temp("") is None
+
+
+def test_bridge_host(monkeypatch):
+    import time as _time
+
+    src = BridgeSource("http://bridge")
+    payload = {"cpu_temp.json": {"timestamp": int(_time.time()), "cpu_temp": 48.3}}
+    monkeypatch.setattr(src, "_get", lambda name, optional=False: payload.get(name))
+    assert src.host().cpu_temp == 48.3
+    payload["cpu_temp.json"] = {"timestamp": "2020-01-01T00:00:00Z", "cpu_temp": 48.3}
+    assert src.host() is None  # stale
+    payload["cpu_temp.json"] = {"cpu_temp": "51.0"}
+    assert src.host().cpu_temp == 51.0
+    payload["cpu_temp.json"] = {"cpu_temp": "n/a"}
+    assert src.host() is None
+    payload.pop("cpu_temp.json")
+    assert src.host() is None
+
+
+def test_bridge_optional_file_logs_once(caplog):
+    src = BridgeSource("http://127.0.0.1:9/", timeout=0.2)
+    with caplog.at_level("INFO"):
+        assert src.host() is None
+        assert src.host() is None
+    assert sum("cpu_temp.json" in r.message for r in caplog.records) == 1
+    assert not [r for r in caplog.records if r.levelname == "WARNING"]

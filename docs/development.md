@@ -32,7 +32,7 @@ Then open `http://127.0.0.1:8080/`.
 
 ## Documentation
 
-This site is built with [Zensical](https://zensical.org) from `docs/` and `zensical.toml`.
+[Zensical](https://zensical.org) builds this site from `docs/` and `zensical.toml`.
 
 ```bash
 uv run --group docs zensical serve        # live preview on http://127.0.0.1:8000/

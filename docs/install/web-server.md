@@ -1,6 +1,6 @@
 # Web server
 
-The collector writes a static site to `/var/lib/gnss-ntp-graphs/www`: `index.html`, the scripts and styles, and a `data/` folder of JSON files it rewrites every minute. Any web server that can serve a folder will do. The only special rule is that `data/` should be sent with `Cache-Control: no-cache`, so browsers always fetch fresh numbers.
+The collector writes a static site to `/var/lib/gnss-ntp-graphs/www`: `index.html`, the scripts and styles, and a `data/` folder of JSON files it rewrites every minute. Any web server that can serve a folder will do. The one special rule: send `data/` with `Cache-Control: no-cache`, so browsers always fetch fresh numbers.
 
 ## lighttpd
 

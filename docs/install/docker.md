@@ -31,72 +31,16 @@ The image sets `source.type`, `source.bridge_url`, `paths.db`, `paths.www`, `ser
 `compose.yaml`:
 
 ```yaml
-# Docker Compose for gnss-ntp-graphs with a custom TOML config.
-# Copy this file and config.docker.toml into one folder, edit the TOML, then:
-#   docker compose up -d
-# After editing the TOML: docker compose restart
-# Set "context" to the folder holding this repository's Dockerfile.
-
-services:
-  gnss-ntp-graphs:
-    build:
-      context: ..
-      # Local source only: include chronyc in the image
-      # args:
-      #   WITH_CHRONYC: "1"
-    image: gnss-ntp-graphs
-    container_name: gnss-ntp-graphs
-    command: ["python", "-m", "gnss_ntp_graphs", "-c", "/config.toml", "run"]
-    ports: ["8080:8080"]
-    # The image sets these through GNG_* variables, which win over the TOML
-    environment:
-      GNG_SOURCE_TYPE: bridge  # bridge | local
-      GNG_SOURCE_BRIDGE_URL: http://192.168.1.50/
-    # Local source only: read chronyd and gpsd on the Docker host.
-    # Remove "ports" above when using host networking.
-    # network_mode: host
-    volumes:
-      - gnss-ntp-graphs:/data
-      - ./config.docker.toml:/config.toml:ro
-    restart: unless-stopped
-
-volumes:
-  gnss-ntp-graphs:
+--8<-- "deploy/compose.yaml"
 ```
 
 `config.docker.toml`:
 
 ```toml
-# gnss-ntp-graphs configuration for Docker Compose (see compose.yaml).
-# Only the keys you change are needed; anything left out keeps its default.
-# Full list of keys: deploy/config.toml or the Configuration docs.
-#
-# The image sets source.type, source.bridge_url, paths.db, paths.www,
-# server.serve and server.port through GNG_* environment variables, and the
-# environment wins over this file. To change one of those, set it under
-# "environment:" in compose.yaml instead (e.g. GNG_SOURCE_BRIDGE_URL).
-
-[web]
-title = "GNSS NTP"
-header = ""
-# "tabs" or "single"
-layout = "tabs"
-# "hover" or "last"
-cursor = "hover"
-default_range = "24h"
-timezone = "local"
-offset_unit = "ms"
-
-[intervals]
-ntp = 60
-gps = 15
-export = 60
-
-[retention]
-raw_days = 7.0
-days_5m = 90.0
-days_1h = 1095.0
+--8<-- "deploy/config.docker.toml"
 ```
+
+A container has no CPU temperature sensor of its own, so the temperature graphs only appear when the bridge publishes `cpu_temp.json` (see [Raspberry Pi](raspberry-pi.md#cpu-temperature)).
 
 For the local source, uncomment `WITH_CHRONYC` and `network_mode: host`, remove `ports`, and set `GNG_SOURCE_TYPE: local`.
 

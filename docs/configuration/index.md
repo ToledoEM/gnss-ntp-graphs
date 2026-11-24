@@ -1,6 +1,6 @@
 # Configuration
 
-The collector reads one TOML file, `/etc/gnss-ntp-graphs/config.toml` on an `install.sh` setup. `deploy/config.toml` in the repository lists every key with its default and a comment, so your own file only needs the keys you change.
+The collector reads one TOML file, `/etc/gnss-ntp-graphs/config.toml` on an `install.sh` setup. `deploy/config.toml` in the repository lists every key with its default and a comment, shown in full under [Full template](#full-template). Your own file only needs the keys you change.
 
 ```toml
 [source]
@@ -58,3 +58,11 @@ It refuses unknown sections and keys, values of the wrong type, choices outside 
 | `[web]` | [Web page](web-page.md) | Everything the page shows and how |
 | `[graphs.<id>]` | [Web page](web-page.md#fixed-y-axis-limits) | Fixed y-axis limits per graph |
 | `[logs]` | [Daemon logs](daemon-logs.md) | chrony or ntpd statistics logs for the Stats tab |
+
+## Full template
+
+Every key with its default. Copy the lines you want to change into `/etc/gnss-ntp-graphs/config.toml`, or into `config.docker.toml` for [Docker](../install/docker.md).
+
+```toml
+--8<-- "deploy/config.toml"
+```

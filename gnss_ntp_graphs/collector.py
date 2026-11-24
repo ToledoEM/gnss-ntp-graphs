@@ -75,7 +75,11 @@ class Collector:
     def poll_host(self) -> None:
         if self.host is None:
             return
-        h = self.host.read()
+        # Bridge-published temperature first (the GPS host), then this machine's
+        from_source = getattr(self.source, "host", None)
+        h = from_source() if from_source else None
+        if h is None:
+            h = self.host.read()
         if h is not None:
             self.store.add_host(h)
 

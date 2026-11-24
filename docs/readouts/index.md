@@ -29,7 +29,7 @@ Two fields change colour:
 | offset | below `offset_warn_ms` (1 ms) | below `offset_bad_ms` (10 ms) | at or above `offset_bad_ms` |
 | updated | up to `stale_warn_s` (120 s) | up to `stale_bad_s` (300 s) | over `stale_bad_s` |
 
-The limits are [configurable](../configuration/web-page.md#status-colours). A red "updated" means the collector has stopped writing, or the browser cannot reach the files. The age is worked out from the viewer's own clock, so a badly set clock on the viewing device also shows up here.
+The limits are [configurable](../configuration/web-page.md#status-colours). A red "updated" means the collector has stopped writing, or the browser cannot reach the files. The page works out the age from the viewer's own clock, so a badly set clock on the viewing device also shows up here.
 
 If the page cannot load `current.json` at all, the status line shows `No data yet:` followed by the error, for example `current.json: 404` before the first export.
 
