@@ -1,14 +1,18 @@
 # Development
 
-The project uses [uv](https://docs.astral.sh/uv/). The collector itself has no dependencies; pytest and Zensical sit in dependency groups.
+The project uses [uv](https://docs.astral.sh/uv/). The collector itself has no dependencies; pytest, pytest-cov, ruff and Zensical sit in dependency groups.
 
-## Tests
+## Tests and lint
 
 ```bash
-uv run pytest
+uv run pytest --cov=gnss_ntp_graphs
+uv run ruff check .
+uv run ruff format --check .
 ```
 
-The tests cover config loading and validation, the chrony, ntpd, gpsd and bridge parsers (against the captured output in `tests/fixtures/`), the store and rollups, the statistics, and the commit-message hook.
+The tests cover config loading and validation, the chrony, ntpd, gpsd and bridge parsers (against the captured output in `tests/fixtures/`), the store and rollups, the statistics, and the commit-message hook. The run fails if total coverage drops below `fail_under` in `pyproject.toml`.
+
+The CI workflow runs the ruff checks and the tests on Python 3.11 and 3.12 for every push and pull request to `main`, and uploads the 3.12 coverage report to Codecov.
 
 ## Running against a config
 
