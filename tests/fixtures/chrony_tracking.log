@@ -1,0 +1,5 @@
+====
+   Date (UTC) Time     IP Address   St   Freq ppm   Skew ppm     Offset L Co  Offset sd Rem. corr. Root delay Root disp. Max. error
+====
+2026-11-24 10:00:00 GPS              1     -4.371      0.012 -4.512e-07 N  1  1.234e-07 -1.0e-09  1.0e-09  1.0e-05  2.0e-05
+2026-11-24 10:00:16 GPS              1     -4.372      0.012  3.000e-07 N  1  1.234e-07 -1.0e-09  1.0e-09  1.0e-05  2.0e-05

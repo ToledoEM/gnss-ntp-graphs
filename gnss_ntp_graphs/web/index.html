@@ -1,0 +1,92 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>GNSS NTP graphs</title>
+<link rel="stylesheet" href="vendor/uPlot.min.css">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<header>
+  <div class="titles">
+    <h1 id="title">GNSS NTP</h1>
+    <p id="subtitle" class="subtitle" hidden></p>
+  </div>
+  <div id="status" class="status"></div>
+  <div class="links">
+    <a id="repo-link" class="icon-link" href="https://github.com/ToledoEM/gnss-ntp-graphs" target="_blank" rel="noopener"
+       aria-label="Source code on GitHub" title="Source code on GitHub">
+      <svg viewBox="0 0 16 16" width="20" height="20" aria-hidden="true"><path fill="currentColor" d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>
+    </a>
+    <a id="docs-link" class="icon-link" href="https://toledoem.github.io/gnss-ntp-graphs/" target="_blank" rel="noopener"
+       aria-label="Documentation" title="Documentation">
+      <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/><path d="M9 7h7M9 11h5"/></svg>
+    </a>
+    <button id="theme" class="theme" type="button" title="Colour theme">theme: auto</button>
+  </div>
+</header>
+
+<nav>
+  <div class="tabs" id="tabs"></div>
+  <div class="ranges" id="ranges"></div>
+</nav>
+
+<main>
+  <section id="sec-ntp" class="section" data-section="ntp">
+    <h2>NTP</h2>
+    <div class="grid">
+      <figure data-graph="offset"><figcaption>Offset (<span class="unit"></span>)</figcaption><div class="plot" id="p-offset"></div></figure>
+      <figure data-graph="jitter"><figcaption>Jitter (<span class="unit"></span>)</figcaption><div class="plot" id="p-jitter"></div></figure>
+      <figure data-graph="freq"><figcaption>Frequency / wander (ppm)</figcaption><div class="plot" id="p-freq"></div></figure>
+      <figure data-graph="root"><figcaption>Root delay / dispersion (<span class="unit"></span>)</figcaption><div class="plot" id="p-root"></div></figure>
+      <figure data-graph="stratum"><figcaption>Stratum</figcaption><div class="plot" id="p-stratum"></div></figure>
+    </div>
+  </section>
+
+  <section id="sec-peers" class="section" data-section="peers">
+    <h2>Peers</h2>
+    <div class="grid">
+      <figure data-graph="peer-offset"><figcaption>Peer offset (<span class="unit"></span>)</figcaption><div class="plot" id="p-peer-offset"></div></figure>
+      <figure data-graph="peer-delay"><figcaption>Peer delay (<span class="unit"></span>)</figcaption><div class="plot" id="p-peer-delay"></div></figure>
+      <figure data-graph="peer-jitter"><figcaption>Peer jitter (<span class="unit"></span>)</figcaption><div class="plot" id="p-peer-jitter"></div></figure>
+      <figure data-graph="peer-reach"><figcaption>Peer reach (255 = last 8 polls answered)</figcaption><div class="plot" id="p-peer-reach"></div></figure>
+    </div>
+    <div class="table-wrap"><table id="peer-table"></table></div>
+  </section>
+
+  <section id="sec-gps" class="section" data-section="gps">
+    <h2>GNSS</h2>
+    <div class="grid">
+      <figure data-graph="sats"><figcaption>Satellites used / visible</figcaption><div class="plot" id="p-sats"></div></figure>
+      <figure data-graph="const"><figcaption>Used by constellation</figcaption><div class="plot" id="p-const"></div></figure>
+      <figure data-graph="ss"><figcaption>Average signal, used satellites (dB-Hz)</figcaption><div class="plot" id="p-ss"></div></figure>
+      <figure data-graph="dop"><figcaption>Dilution of precision</figcaption><div class="plot" id="p-dop"></div></figure>
+      <figure data-graph="sky"><figcaption>Sky now (filled = used)</figcaption><canvas id="sky" width="420" height="420"></canvas></figure>
+    </div>
+  </section>
+
+  <section id="sec-stats" class="section" data-section="stats">
+    <h2>Stats</h2>
+    <div class="stats-head">
+      <div class="windows" id="windows"></div>
+      <p class="note" id="stats-origin"></p>
+    </div>
+    <div class="grid">
+      <figure data-graph="hist"><figcaption>Offset histogram (central 98%, <span class="unit"></span>)</figcaption><div class="plot" id="p-hist"></div></figure>
+      <figure data-graph="adev"><figcaption>Allan deviation of offset</figcaption><div class="plot" id="p-adev"></div></figure>
+    </div>
+    <div class="table-wrap"><table id="stats-table"></table></div>
+    <div class="table-wrap"><table id="peer-stats-table"></table></div>
+  </section>
+</main>
+
+<footer>
+  <p id="footer"></p>
+  <p class="credit">GNSS NTP Graphs developed by ToledoEM</p>
+</footer>
+
+<script src="vendor/uPlot.iife.min.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

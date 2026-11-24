@@ -1,0 +1,30 @@
+[Unit]
+Description=gnss-ntp-graphs collector (NTP/GNSS history graphs)
+After=network-online.target chrony.service ntp.service ntpsec.service gpsd.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=gnssgraphs
+Group=gnssgraphs
+WorkingDirectory=/opt/gnss-ntp-graphs
+Environment=PYTHONPATH=/opt/gnss-ntp-graphs
+Environment=PYTHONUNBUFFERED=1
+ExecStart=/usr/bin/python3 -m gnss_ntp_graphs -c /etc/gnss-ntp-graphs/config.toml run
+Restart=on-failure
+RestartSec=10
+StateDirectory=gnss-ntp-graphs
+StateDirectoryMode=0755
+
+# Read-only everywhere except its own state directory
+NoNewPrivileges=yes
+ProtectSystem=strict
+ProtectHome=yes
+PrivateTmp=yes
+PrivateDevices=yes
+ProtectKernelTunables=yes
+ProtectControlGroups=yes
+ReadWritePaths=/var/lib/gnss-ntp-graphs
+
+[Install]
+WantedBy=multi-user.target

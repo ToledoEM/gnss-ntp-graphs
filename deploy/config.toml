@@ -1,0 +1,112 @@
+# gnss-ntp-graphs configuration.
+# After editing: sudo systemctl restart gnss-ntp-graphs
+# Only the keys you change are needed; the values below are the defaults.
+# Any key can also be set from the environment as GNG_<SECTION>_<KEY>,
+# e.g. GNG_SOURCE_TYPE=local or GNG_WEB_SECTIONS=ntp,peers (lists comma-separated).
+
+[source]
+# "bridge": poll GPSNTPHomeBridge JSON over HTTP (standalone server, Docker)
+# "local":  read chronyc/ntpq and gpsd on this machine (Pi with the GPS)
+type = "bridge"
+bridge_url = "http://127.0.0.1/"
+# local only: "auto" | "chrony" | "ntpd"
+ntp = "auto"
+gpsd_host = "127.0.0.1"
+gpsd_port = 2947
+timeout = 10.0
+
+[intervals]
+# Seconds. The bridge refreshes NTP every 60 s and GPS every 15 s.
+ntp = 60
+gps = 15
+# How often the graph data is written (graphs1090 DRAW_INTERVAL). Ranges
+# longer than 2h refresh once per bucket, so long ones cost little.
+export = 60
+rollup = 300
+stats = 900
+
+[paths]
+db = "/var/lib/gnss-ntp-graphs/samples.db"
+www = "/var/lib/gnss-ntp-graphs/www"
+# Static web files copied into www at start; empty = bundled files
+web_src = ""
+
+[retention]
+raw_days = 7.0
+days_5m = 90.0
+days_1h = 1095.0
+
+[logs]
+# Optional, local mode. Daemon statistics logs give finer offset data for
+# the Stats page. Empty = use polled samples. See README.
+chrony_tracking = ""   # e.g. "/var/log/chrony/tracking.log"
+ntpd_loopstats = ""    # e.g. "/var/log/ntpstats/loopstats"
+
+[server]
+# Built-in static web server, for Docker or hosts without lighttpd/nginx
+serve = false
+bind = "0.0.0.0"
+port = 8080
+
+[web]
+# Text in the browser tab and page heading (graphs1090 WWW_TITLE)
+title = "GNSS NTP"
+# Line under the heading; empty hides it (graphs1090 WWW_HEADER)
+header = ""
+# Link icons in the header; an empty string hides the icon
+repo_url = "https://github.com/ToledoEM/gnss-ntp-graphs"
+docs_url = "https://toledoem.github.io/gnss-ntp-graphs/"
+# "auto" follows the viewer's system setting; "light" | "dark" force one.
+# Viewers can still switch with the theme button; their choice is remembered.
+theme = "auto"
+# Plot colours: a ColorBrewer qualitative scheme (https://colorbrewer2.org):
+# "Accent", "Dark2", "Paired", "Pastel1", "Pastel2", "Set1", "Set2", "Set3".
+# Each graph takes as many colours as it has lines (at least 3), up to the
+# scheme's largest set; further lines reuse the colours with dashed strokes.
+palette = "Paired"
+# true limits colours to the sets ColorBrewer rates colourblind safe:
+# "Paired" (up to 4 colours), "Dark2" or "Set2" (3 colours). Further lines
+# are dashed. Other palettes are refused when this is on.
+colourblind_safe = false
+# "tabs": one section at a time; "single": all sections on one page
+layout = "tabs"
+# Sections shown, in this order: "ntp", "peers", "gps", "stats"
+sections = ["ntp", "peers", "gps", "stats"]
+# Graphs to hide. Ids: offset jitter freq root stratum peer-offset
+# peer-delay peer-jitter peer-reach sats const ss dop sky hist adev
+hide_graphs = []
+# Range buttons, from "2h", "8h", "24h", "7d", "30d", "1y"
+ranges = ["2h", "8h", "24h", "7d", "30d", "1y"]
+default_range = "24h"
+# Graph plot height in px (graphs1090 graph_size / lheight)
+graph_height = 220
+# Graphs per row: "auto" (fit width), 1, 2 or 3. Phones always get 1.
+columns = "auto"
+# Base font size in px (graphs1090 font_size)
+font_size = 14
+# Time axis zone: "local" (viewer's browser), "UTC" or an IANA name such
+# as "Europe/London" (graphs1090 TZ)
+timezone = "local"
+# Unit for offsets, jitter, delay and dispersion: "ms" | "us"
+offset_unit = "ms"
+# Dashed reference lines on the offset graph, in ms, e.g. [-0.01, 0.01]
+offset_lines = []
+# Status colour of the current offset: green below warn, amber below bad, else red (ms)
+offset_warn_ms = 1.0
+offset_bad_ms = 10.0
+# Status colour of the "updated" age, in seconds
+stale_warn_s = 120
+stale_bad_s = 300
+# Most peers drawn per graph (those with the most data win)
+max_peers = 16
+# Peers never drawn, by remote address or name, e.g. ["NMEA"]
+hide_peers = []
+
+# Fixed y-axis limits per graph, in the graph's displayed unit
+# (graphs1090 ul_* / ll_*). One table per graph id; either key may be left out.
+# [graphs.offset]
+# y_min = -0.05
+# y_max = 0.05
+#
+# [graphs.dop]
+# y_max = 3
