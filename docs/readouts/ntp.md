@@ -81,11 +81,11 @@ When the daemon reports stratum 0 or 16 it is not synchronised, and its other va
 
 ## CPU temperature
 
-CPU temperature (°C, left axis) drawn against the frequency correction (ppm, right axis). With `bridge`, it comes from the bridge's `cpu_temp.json` when the bridge publishes one. Otherwise it is the temperature of the machine the collector runs on: `vcgencmd measure_temp` on a Raspberry Pi, `/sys/class/thermal/thermal_zone0/temp` on other Linux hosts. With no reading at all, the graph stays hidden. [CPU temperature](../install/raspberry-pi.md#cpu-temperature) explains each setup. Turn it off with `[source] host_temp = false`.
+The time server's CPU temperature (°C, left axis) drawn against the frequency correction (ppm, right axis). With `bridge` it comes from the bridge's `cpu_temp.json`. With `local` it comes from `vcgencmd measure_temp`, else the CPU thermal zone. With no reading, the graph stays hidden. [CPU temperature](../install/raspberry-pi.md#cpu-temperature) explains each setup. Turn it off with `[source] host_temp = false`.
 
 The crystal that sets the system clock sits next to the CPU, so its frequency follows CPU temperature. When the two lines rise and fall together, the frequency correction is thermal drift. A load spike, a fan switching on or sunlight on the case shows in both. The [Stats tab](stats.md#frequency-and-offset-vs-cpu-temperature) puts a number on the relationship.
 
 | | |
 |---|---|
 | Unit | °C and ppm |
-| Source | Bridge `cpu_temp.json`, else `vcgencmd measure_temp`, else the kernel thermal zone |
+| Source | `bridge`: `cpu_temp.json`. `local`: `vcgencmd measure_temp`, else the CPU thermal zone |

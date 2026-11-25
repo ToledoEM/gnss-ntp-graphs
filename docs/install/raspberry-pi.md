@@ -52,15 +52,14 @@ journalctl -u gnss-ntp-graphs -f           # follow the log
 
 ## CPU temperature
 
-The collector records the CPU temperature every `[intervals] host` seconds (60 by default) and graphs it against the frequency correction. Set `[source] host_temp = false` to turn it off.
+The collector records the time server's CPU temperature every `[intervals] host` seconds (60 by default) and graphs it against the frequency correction. Set `[source] host_temp = false` to turn it off.
 
-Where the reading comes from depends on where the collector runs.
+The source type decides where the reading comes from. The collector never records the temperature of the machine it runs on unless that machine is the time server.
 
-| Collector runs on | Temperature of | Read from |
+| Source | Read from | Without it |
 |---|---|---|
-| The GPS Pi (`local` or `bridge`) | The GPS Pi | `/sys/class/thermal/thermal_zone0/temp` under the service, `vcgencmd measure_temp` when run by hand |
-| Another machine or Docker (`bridge`) | The GPS Pi, if the bridge publishes `cpu_temp.json` | `<bridge_url>/cpu_temp.json` |
-| Another machine, bridge without `cpu_temp.json` | That machine, if it has a sensor | Its own thermal zone |
+| `local` | `vcgencmd measure_temp`, else the CPU thermal zone (`cpu-thermal` on a Pi, `x86_pkg_temp` or `coretemp` on a PC). Zones such as `acpitz`, which often report a fixed 25 °C, are skipped | No temperature graphs |
+| `bridge` | `<bridge_url>/cpu_temp.json`, published by the time server (see below) | No temperature graphs |
 
 The service runs with `PrivateDevices=yes`, which hides `/dev/vchiq`, so `vcgencmd` cannot run inside it. The kernel thermal zone is the same sensor and stays readable. Check both by hand on the Pi:
 
@@ -71,33 +70,32 @@ cat /sys/class/thermal/thermal_zone0/temp      # 48312 (millidegrees)
 
 ### Publishing the temperature from the bridge
 
-GPSNTPHomeBridge does not publish a temperature file itself. To get the GPS Pi's temperature into a collector on another machine, add a timer on the Pi that writes `cpu_temp.json` into the bridge's web root (`/var/www/html` by default):
+GPSNTPHomeBridge does not publish a temperature file itself. A collector with the `bridge` source needs this file to graph the time server's temperature, wherever the collector runs. `deploy/gnss-ntp-cpu-temp` writes it. Run this on the time server to install it, and again to update it:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/ToledoEM/gnss-ntp-graphs/main/deploy/gnss-ntp-cpu-temp | sudo sh -s install
+curl http://<bridge>/cpu_temp.json
+```
+
+It needs no clone of this repository. The script reads `vcgencmd measure_temp`, else `/sys/class/thermal/thermal_zone0/temp`, and writes `cpu_temp.json` every 60 seconds into the bridge's web root (`WEB_ROOT` from `/etc/ntphomebridge/bridge.env`, else `/var/www/html`):
 
 ```json
 {"timestamp": 1795535340, "cpu_temp": 48.3}
 ```
 
-`timestamp` is Unix seconds or an ISO 8601 string. The collector ignores a file older than 5 minutes, so a stopped timer shows as a gap rather than a flat line.
+`timestamp` is Unix seconds or an ISO 8601 string. The collector ignores a file older than 5 minutes, so a stopped timer shows as a gap rather than a flat line. It picks the file up on its next poll, with no restart.
 
-`/usr/local/bin/cpu-temp-json`:
-
-```bash
-#!/bin/sh
-# Write the CPU temperature as cpu_temp.json for gnss-ntp-graphs
-out=/var/www/html/cpu_temp.json
-milli=$(cat /sys/class/thermal/thermal_zone0/temp) || exit 1
-printf '{"timestamp": %s, "cpu_temp": %s.%03d}\n' "$(date +%s)" "$((milli / 1000))" "$((milli % 1000))" > "$out.tmp"
-mv "$out.tmp" "$out"
-```
-
-Make it executable and run it every minute from root's crontab:
+| Path | Contents |
+|---|---|
+| `/usr/local/bin/gnss-ntp-cpu-temp` | The script |
+| `/etc/systemd/system/gnss-ntp-cpu-temp.service` | One-shot unit that writes the file |
+| `/etc/systemd/system/gnss-ntp-cpu-temp.timer` | Runs it 30 s after boot, then every 60 s |
+| `<web root>/cpu_temp.json` | The published reading |
 
 ```bash
-sudo chmod 755 /usr/local/bin/cpu-temp-json
-(sudo crontab -l 2>/dev/null; echo '* * * * * /usr/local/bin/cpu-temp-json') | sudo crontab -
+systemctl status gnss-ntp-cpu-temp.timer     # last and next run
+sudo gnss-ntp-cpu-temp uninstall             # remove everything above
 ```
-
-Check it with `curl http://<bridge>/cpu_temp.json`. The collector picks the file up on its next poll; no restart is needed.
 
 ## Uninstall
 

@@ -297,41 +297,61 @@ def test_cli_version(capsys):
     assert __version__ in capsys.readouterr().out
 
 
+def zones(root, *pairs):
+    for i, (kind, milli) in enumerate(pairs):
+        z = root / f"thermal_zone{i}"
+        z.mkdir(parents=True)
+        (z / "type").write_text(kind + "\n")
+        (z / "temp").write_text(f"{milli}\n")
+    return root
+
+
 def test_host_temp_vcgencmd(monkeypatch, tmp_path):
     monkeypatch.setattr(local.shutil, "which", lambda name: "/usr/bin/" + name)
     monkeypatch.setattr(local, "_run", lambda cmd, timeout: "temp=47.2'C\n")
-    h = local.HostTemp(zone=tmp_path / "none").read()
+    h = local.HostTemp(root=tmp_path).read()
     assert h is not None and h.cpu_temp == 47.2
 
 
-def test_host_temp_thermal_zone_and_missing(monkeypatch, tmp_path):
+def test_host_temp_picks_cpu_zone_by_type(monkeypatch, tmp_path):
     monkeypatch.setattr(local.shutil, "which", lambda name: None)
-    zone = tmp_path / "temp"
-    zone.write_text("45000\n")
-    assert local.HostTemp(zone=zone).read().cpu_temp == 45.0
-    ht = local.HostTemp(zone=tmp_path / "none")
+    pi = zones(tmp_path / "pi", ("cpu-thermal", 50500))
+    assert local.HostTemp(root=pi).read().cpu_temp == 50.5
+    x86 = zones(
+        tmp_path / "x86", ("acpitz", 25000), ("INT3400 Thermal", 20000), ("x86_pkg_temp", 65000)
+    )
+    assert local.HostTemp(root=x86).read().cpu_temp == 65.0
+    acpi = zones(tmp_path / "acpi", ("acpitz", 25000))
+    ht = local.HostTemp(root=acpi)
     assert ht.read() is None and ht.missing_logged
+    assert local.HostTemp(root=tmp_path / "none").read() is None
+
+
+def test_local_source_host(monkeypatch, tmp_path):
+    monkeypatch.setattr(local.shutil, "which", lambda name: None)
+    src = LocalSource()
+    src.host_temp = local.HostTemp(root=zones(tmp_path, ("cpu-thermal", 49400)))
+    assert src.host().cpu_temp == 49.4
 
 
 def test_collector_poll_host(tmp_path, monkeypatch):
-    cfg = tmp_cfg(tmp_path)
-    c = Collector(cfg)
-    monkeypatch.setattr(c.host, "read", lambda: base.HostSample(ts=5, cpu_temp=50.0))
+    c = Collector(tmp_cfg(tmp_path, type="local"))
+    monkeypatch.setattr(c.source, "host", lambda: base.HostSample(ts=5, cpu_temp=50.0))
     c.poll_host()
     assert c.store.get_meta("host_latest") == {"ts": 5, "cpu_temp": 50.0}
-    cfg = tmp_cfg(tmp_path / "off", host_temp=False)
     (tmp_path / "off").mkdir()
-    off = Collector(cfg)
-    assert off.host is None
+    off = Collector(tmp_cfg(tmp_path / "off", type="local", host_temp=False))
+    monkeypatch.setattr(off.source, "host", lambda: base.HostSample(ts=5, cpu_temp=50.0))
     off.poll_host()
+    assert off.store.get_meta("host_latest") is None
 
 
-def test_collector_prefers_bridge_temperature(tmp_path, monkeypatch):
-    c = Collector(tmp_cfg(tmp_path))
-    monkeypatch.setattr(c.source, "host", lambda: base.HostSample(ts=7, cpu_temp=40.0))
-    monkeypatch.setattr(c.host, "read", lambda: base.HostSample(ts=8, cpu_temp=60.0))
-    c.poll_host()
-    assert c.store.get_meta("host_latest")["cpu_temp"] == 40.0
+def test_collector_bridge_uses_only_bridge_temperature(tmp_path, monkeypatch):
+    c = Collector(tmp_cfg(tmp_path, type="bridge"))
+    monkeypatch.setattr(local.HostTemp, "read", lambda self: base.HostSample(ts=8, cpu_temp=25.0))
     monkeypatch.setattr(c.source, "host", lambda: None)
     c.poll_host()
-    assert c.store.get_meta("host_latest")["cpu_temp"] == 60.0
+    assert c.store.get_meta("host_latest") is None  # never this machine's sensor
+    monkeypatch.setattr(c.source, "host", lambda: base.HostSample(ts=7, cpu_temp=49.4))
+    c.poll_host()
+    assert c.store.get_meta("host_latest")["cpu_temp"] == 49.4

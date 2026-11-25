@@ -40,7 +40,7 @@ The image sets `source.type`, `source.bridge_url`, `paths.db`, `paths.www`, `ser
 --8<-- "deploy/config.docker.toml"
 ```
 
-A container has no CPU temperature sensor of its own, so the temperature graphs only appear when the bridge publishes `cpu_temp.json` (see [Raspberry Pi](raspberry-pi.md#cpu-temperature)).
+The temperature graphs show the time server's CPU temperature, so they only appear when the bridge publishes `cpu_temp.json`. One command on the time server sets that up: see [Publishing the temperature from the bridge](raspberry-pi.md#publishing-the-temperature-from-the-bridge).
 
 For the local source, uncomment `WITH_CHRONYC` and `network_mode: host`, remove `ports`, and set `GNG_SOURCE_TYPE: local`.
 

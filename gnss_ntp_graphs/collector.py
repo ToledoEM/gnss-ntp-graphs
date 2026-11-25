@@ -12,7 +12,6 @@ from pathlib import Path
 
 from .export import Exporter, install_web
 from .sources import make_source
-from .sources.local import HostTemp
 from .store import Store
 
 log = logging.getLogger(__name__)
@@ -45,7 +44,7 @@ class Collector:
         )
         self.source = make_source(cfg)
         self.source_name = cfg["source"]["type"]
-        self.host = HostTemp(cfg["source"]["timeout"]) if cfg["source"]["host_temp"] else None
+        self.host_temp = cfg["source"]["host_temp"]
         self.www = cfg["paths"]["www"]
         self.exporter = Exporter(self.store, self.www, cfg)
         iv = cfg["intervals"]
@@ -73,13 +72,13 @@ class Collector:
             self.store.add_gps(g)
 
     def poll_host(self) -> None:
-        if self.host is None:
+        # Temperature of the time server: local reads this machine, bridge
+        # reads the bridge's cpu_temp.json. Never the collector's own host
+        # when it only polls a bridge.
+        if not self.host_temp:
             return
-        # Bridge-published temperature first (the GPS host), then this machine's
-        from_source = getattr(self.source, "host", None)
-        h = from_source() if from_source else None
-        if h is None:
-            h = self.host.read()
+        read = getattr(self.source, "host", None)
+        h = read() if read else None
         if h is not None:
             self.store.add_host(h)
 
