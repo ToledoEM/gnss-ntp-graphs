@@ -1,0 +1,125 @@
+#!/bin/sh
+# Publish the CPU temperature of this machine as cpu_temp.json in the
+# GPSNTPHomeBridge web root, for gnss-ntp-graphs collectors using the bridge
+# source.
+#
+#   gnss-ntp-cpu-temp             write cpu_temp.json once
+#   gnss-ntp-cpu-temp install     install to /usr/local/bin with a 60 s systemd timer
+#   gnss-ntp-cpu-temp uninstall   remove the timer, units, script and cpu_temp.json
+#
+# Install or update straight from GitHub:
+#   curl -fsSL https://raw.githubusercontent.com/ToledoEM/gnss-ntp-graphs/main/deploy/gnss-ntp-cpu-temp | sudo sh -s install
+set -eu
+
+NAME=gnss-ntp-cpu-temp
+BIN=/usr/local/bin/$NAME
+UNIT_DIR=/etc/systemd/system
+BRIDGE_ENV=/etc/ntphomebridge/bridge.env
+RAW_URL=${GNG_RAW_URL:-https://raw.githubusercontent.com/ToledoEM/gnss-ntp-graphs/main/deploy/$NAME}
+THERMAL_ZONE=${THERMAL_ZONE:-/sys/class/thermal/thermal_zone0/temp}
+
+web_root() {
+    if [ -n "${WEB_ROOT:-}" ]; then
+        printf '%s\n' "$WEB_ROOT"
+        return
+    fi
+    root=""
+    if [ -r "$BRIDGE_ENV" ]; then
+        root=$(sed -n 's/^WEB_ROOT=//p' "$BRIDGE_ENV" | tail -n 1 | tr -d "\"'")
+    fi
+    printf '%s\n' "${root:-/var/www/html}"
+}
+
+read_temp() {
+    if command -v vcgencmd >/dev/null 2>&1; then
+        t=$(vcgencmd measure_temp 2>/dev/null | sed -n "s/^temp=\(-\{0,1\}[0-9][0-9.]*\)'C.*/\1/p")
+        if [ -n "$t" ]; then
+            printf '%s\n' "$t"
+            return 0
+        fi
+    fi
+    if [ -r "$THERMAL_ZONE" ]; then
+        milli=$(tr -d '[:space:]' <"$THERMAL_ZONE")
+        case "$milli" in
+            '' | *[!0-9-]*) ;;
+            *)
+                awk -v m="$milli" 'BEGIN { printf "%.1f\n", m / 1000 }'
+                return 0
+                ;;
+        esac
+    fi
+    return 1
+}
+
+publish() {
+    root=$(web_root)
+    [ -d "$root" ] || { echo "$NAME: web root $root not found" >&2; exit 1; }
+    temp=$(read_temp) || { echo "$NAME: no CPU temperature (no vcgencmd, no $THERMAL_ZONE)" >&2; exit 1; }
+    out="$root/cpu_temp.json"
+    printf '{"timestamp": %s, "cpu_temp": %s}\n' "$(date +%s)" "$temp" >"$out.tmp"
+    chmod 0644 "$out.tmp"
+    mv "$out.tmp" "$out"
+}
+
+need_root() {
+    [ "$(id -u)" = 0 ] || { echo "$NAME: $1 needs root (sudo)" >&2; exit 1; }
+}
+
+install_self() {
+    need_root install
+    root=$(web_root)
+    if [ -f "$0" ] && grep -q "^NAME=$NAME\$" "$0" 2>/dev/null; then
+        [ "$0" = "$BIN" ] || install -m 0755 "$0" "$BIN"
+    else
+        curl -fsSL "$RAW_URL" -o "$BIN.new"
+        chmod 0755 "$BIN.new"
+        mv "$BIN.new" "$BIN"
+    fi
+    cat >"$UNIT_DIR/$NAME.service" <<EOF
+[Unit]
+Description=Publish CPU temperature as cpu_temp.json for gnss-ntp-graphs
+
+[Service]
+Type=oneshot
+ExecStart=$BIN
+Nice=10
+NoNewPrivileges=yes
+ProtectSystem=full
+ProtectHome=yes
+PrivateTmp=yes
+ReadWritePaths=$root
+EOF
+    cat >"$UNIT_DIR/$NAME.timer" <<EOF
+[Unit]
+Description=Publish CPU temperature every 60 s for gnss-ntp-graphs
+
+[Timer]
+OnBootSec=30s
+OnUnitActiveSec=60s
+AccuracySec=5s
+
+[Install]
+WantedBy=timers.target
+EOF
+    systemctl daemon-reload
+    systemctl enable --now "$NAME.timer" >/dev/null
+    systemctl start "$NAME.service"
+    echo "installed $BIN, $NAME.service and $NAME.timer"
+    cat "$root/cpu_temp.json"
+}
+
+uninstall_self() {
+    need_root uninstall
+    root=$(web_root)
+    systemctl disable --now "$NAME.timer" 2>/dev/null || true
+    rm -f "$UNIT_DIR/$NAME.service" "$UNIT_DIR/$NAME.timer" "$BIN" "$root/cpu_temp.json"
+    systemctl daemon-reload
+    echo "removed $NAME"
+}
+
+case "${1:-}" in
+    '') publish ;;
+    install) install_self ;;
+    uninstall) uninstall_self ;;
+    *) echo "usage: $NAME [install|uninstall]" >&2; exit 2 ;;
+esac

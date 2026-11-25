@@ -252,7 +252,17 @@ def read_gpsd_sky(host: str, port: int, timeout: float) -> dict[str, Any] | None
 
 # --- host -------------------------------------------------------------------
 
-THERMAL_ZONE = Path("/sys/class/thermal/thermal_zone0/temp")
+THERMAL_ROOT = Path("/sys/class/thermal")
+# Thermal zone types that measure the CPU, in order of preference. Others,
+# such as ACPI's acpitz, often report a fixed placeholder (25 or 27.8 °C).
+CPU_ZONE_TYPES = (
+    "cpu-thermal",
+    "cpu_thermal",
+    "soc_thermal",
+    "x86_pkg_temp",
+    "coretemp",
+    "k10temp",
+)
 _TEMP_RE = re.compile(r"temp=(-?\d+(?:\.\d+)?)'C")
 
 
@@ -270,16 +280,26 @@ def thermal_zone_temp(text: str | None) -> float | None:
         return None
 
 
+def cpu_zone(root: Path = THERMAL_ROOT) -> Path | None:
+    """temp file of the preferred CPU thermal zone under root, or None."""
+    found: dict[str, Path] = {}
+    for zone in sorted(root.glob("thermal_zone*")):
+        with contextlib.suppress(OSError):
+            kind = (zone / "type").read_text().strip()
+            found.setdefault(kind, zone / "temp")
+    return next((found[k] for k in CPU_ZONE_TYPES if k in found), None)
+
+
 class HostTemp:
     """CPU temperature of the machine the collector runs on.
 
-    Tries `vcgencmd measure_temp` (Raspberry Pi), then the kernel thermal
-    zone. Machines with neither return None and log it once.
+    Tries `vcgencmd measure_temp` (Raspberry Pi), then the CPU thermal zone
+    picked by type. Machines with neither return None and log it once.
     """
 
-    def __init__(self, timeout: float = 10.0, zone: Path = THERMAL_ZONE):
+    def __init__(self, timeout: float = 10.0, root: Path = THERMAL_ROOT):
         self.timeout = timeout
-        self.zone = zone
+        self.root = root
         self.missing_logged = False
 
     def read(self) -> HostSample | None:
@@ -288,11 +308,15 @@ class HostTemp:
         if shutil.which("vcgencmd"):
             temp = vcgencmd_temp(_run(["vcgencmd", "measure_temp"], self.timeout))
         if temp is None:
-            with contextlib.suppress(OSError):
-                temp = thermal_zone_temp(self.zone.read_text())
+            zone = cpu_zone(self.root)
+            if zone is not None:
+                with contextlib.suppress(OSError):
+                    temp = thermal_zone_temp(zone.read_text())
         if temp is None:
             if not self.missing_logged:
-                log.info("no CPU temperature on this host (no vcgencmd, no %s)", self.zone)
+                log.info(
+                    "no CPU temperature on this host (no vcgencmd, no CPU zone in %s)", self.root
+                )
                 self.missing_logged = True
             return None
         return HostSample(ts=ts, cpu_temp=temp)
@@ -310,6 +334,10 @@ class LocalSource:
         self.gpsd_host = gpsd_host
         self.gpsd_port = gpsd_port
         self.timeout = timeout
+        self.host_temp = HostTemp(timeout)
+
+    def host(self) -> HostSample | None:
+        return self.host_temp.read()
 
     def _daemon(self) -> str:
         if self.ntp in ("chrony", "chronyd"):
